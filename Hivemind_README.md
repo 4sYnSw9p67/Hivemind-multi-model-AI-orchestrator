@@ -1,11 +1,14 @@
 # Hivemind App
 
 ## Overview
+
 Hivemind is a **multi-model AI orchestrator**: a system that sends user queries to multiple GenAI models (GPT-4, Claude, LLaMA, Mistral, etc.), collects their responses, and selects the best result.  
-Inspired by the idea of a **Hivemind**, where multiple voices contribute to one optimized answer, without using the worker ant analogy.
+Inspired by the idea of a **Hivemind**, where multiple voices contribute to one optimized answer.
 
 ## Architecture
+
 ### Frontend
+
 - **Framework**: React + Tailwind + shadcn/ui
 - **Features**:
   - Input box for queries
@@ -14,6 +17,7 @@ Inspired by the idea of a **Hivemind**, where multiple voices contribute to one 
   - Voting / “Pick Best” feature for user feedback
 
 ### Backend
+
 - **Language**: Go with Gin (chosen for speed, concurrency, and simplicity)
 - **Responsibilities**:
   - Accept query from frontend
@@ -22,6 +26,7 @@ Inspired by the idea of a **Hivemind**, where multiple voices contribute to one 
   - Store results & votes in database
 
 ### Database
+
 - **Supabase (Postgres)** or equivalent
 - Stores:
   - Queries
@@ -29,24 +34,79 @@ Inspired by the idea of a **Hivemind**, where multiple voices contribute to one 
   - User feedback / chosen “best answer”
 
 ### Deployment
+
 - **Backend**: Docker → Render / Fly.io / Kubernetes
 - **Frontend**: Netlify or Vercel
 - **DB**: Supabase (cloud-hosted Postgres)
 
 ---
 
+## Backend in Node js
+
+```javascript
+import express from "express";
+import fetch from "node-fetch";
+
+const app = express();
+app.use(express.json());
+
+async function callModel(apiUrl, apiKey, query) {
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt: query }),
+  });
+  return res.json();
+}
+
+app.post("/query", async (req, res) => {
+  const { query } = req.body;
+
+  const [gpt, claude, llama] = await Promise.all([
+    callModel(
+      "https://api.openai.com/v1/chat/completions",
+      process.env.OPENAI_KEY,
+      query
+    ),
+    callModel(
+      "https://api.anthropic.com/v1/messages",
+      process.env.CLAUDE_KEY,
+      query
+    ),
+    callModel("https://llama.api.url", process.env.LLAMA_KEY, query),
+  ]);
+
+  res.json({
+    results: [
+      { model: "GPT-4", output: gpt.choices[0].message.content },
+      { model: "Claude", output: claude.output },
+      { model: "LLaMA", output: llama.output },
+    ],
+  });
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));
+```
+
+---
+
 ## Backend in Go Gin
 
 ### Why Go?
+
 - Goroutines + channels make **parallel API calls** trivial
 - Compiles to a single binary → easy deploy
-- Strong libraries:  
-  - OpenAI SDK: `github.com/sashabaranov/go-openai`  
-  - Anthropic Claude: REST via `net/http`  
-  - LLaMA/Mistral: via HTTP endpoints (Ollama, vLLM, Together API)  
-  - Config: `github.com/joho/godotenv`  
+- Strong libraries:
+  - OpenAI SDK: `github.com/sashabaranov/go-openai`
+  - Anthropic Claude: REST via `net/http`
+  - LLaMA/Mistral: via HTTP endpoints (Ollama, vLLM, Together API)
+  - Config: `github.com/joho/godotenv`
 
 ### Example Gin Skeleton
+
 ```go
 package main
 
@@ -145,18 +205,14 @@ func main() {
 ---
 
 ## Naming
-- The project name will be **Hivemind**.  
-- Avoids insect worker analogy, focuses on “many models, one brain.”  
 
-Alternative ideas we considered:  
-- **Constellation** (many stars → one picture)  
-- **Oracle** (many voices → one truth)  
-- **Chorus** (many voices → one song)  
-- **Grove** (many trees → one wisdom)  
+- The project name will be **Hivemind**.
+- Focuses on “many models, one brain.”
 
 ---
 
 ## Next Steps
+
 1. Expand Go Gin backend with:
    - Logging
    - Config via `.env`
