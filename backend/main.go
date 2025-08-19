@@ -1,11 +1,12 @@
 package main
 
 import (
+    "log"
     "net/http"
     "os"
-    "sync"
     "context"
     "github.com/gin-gonic/gin"
+    "github.com/gin-contrib/cors"
     "github.com/sashabaranov/go-openai"
 )
 
@@ -33,27 +34,34 @@ func callOpenAI(ctx context.Context, query string) AIResult {
 }
 
 func main() {
-    r := gin.Default()
+	r := gin.Default()
 
-    r.POST("/query", func(c *gin.Context) {
-        var body struct{ Query string `json:"query"` }
-        if err := c.BindJSON(&body); err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-            return
-        }
+	// ✅ Enable CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:4200"},
+		AllowMethods:     []string{"POST", "GET", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
-        var wg sync.WaitGroup
-        results := make([]AIResult, 1)
-        wg.Add(1)
+	r.POST("/query", func(c *gin.Context) {
+		var body struct {
+			Query string `json:"query"`
+		}
+		if err := c.BindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
 
-        go func() {
-            defer wg.Done()
-            results[0] = callOpenAI(c, body.Query)
-        }()
+		// Simulate AI response
+		c.JSON(http.StatusOK, gin.H{
+			"results": []gin.H{
+				{"model": "Mock-GPT", "output": "Answer for: " + body.Query},
+			},
+		})
+	})
 
-        wg.Wait()
-        c.JSON(http.StatusOK, gin.H{"results": results})
-    })
-
-    r.Run(":8080")
+	log.Println("Server running on http://localhost:8080")
+	r.Run(":8080")
 }

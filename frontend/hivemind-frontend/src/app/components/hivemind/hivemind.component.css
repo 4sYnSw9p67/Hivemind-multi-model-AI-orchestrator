@@ -1,0 +1,27 @@
+.hivemind-container {
+  max-width: 600px;
+  margin: auto;
+  text-align: center;
+}
+
+input {
+  width: 70%;
+  padding: 8px;
+  margin-right: 6px;
+}
+
+button {
+  padding: 8px 12px;
+}
+
+.result {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.error {
+  color: red;
+}

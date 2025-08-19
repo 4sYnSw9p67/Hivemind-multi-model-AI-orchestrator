@@ -1,0 +1,12 @@
+<div class="hivemind-container">
+  <input [(ngModel)]="query" placeholder="Ask the Hivemind..." />
+  <button (click)="submitQuery()" [disabled]="loading">Send</button>
+
+  <div *ngIf="loading">Loading...</div>
+
+  <div *ngFor="let r of results" class="result">
+    <h3>{{ r.model }}</h3>
+    <p *ngIf="!r.error">{{ r.output }}</p>
+    <p *ngIf="r.error" class="error">Error: {{ r.error }}</p>
+  </div>
+</div>
