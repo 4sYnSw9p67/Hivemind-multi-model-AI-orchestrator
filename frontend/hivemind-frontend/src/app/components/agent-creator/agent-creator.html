@@ -102,8 +102,14 @@
       <div class="agent-card" *ngFor="let agent of agents; trackBy: trackAgent" [class.animate-fade-in]="true">
         <div class="card-header">
           <div class="agent-avatar">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Worker node with connections -->
+              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+              <path d="M12 6v3M18 12h-3M12 15v3M6 12h3"/>
+              <circle cx="12" cy="6" r="1" fill="currentColor"/>
+              <circle cx="18" cy="12" r="1" fill="currentColor"/>
+              <circle cx="12" cy="18" r="1" fill="currentColor"/>
+              <circle cx="6" cy="12" r="1" fill="currentColor"/>
             </svg>
           </div>
           <div class="agent-status">
