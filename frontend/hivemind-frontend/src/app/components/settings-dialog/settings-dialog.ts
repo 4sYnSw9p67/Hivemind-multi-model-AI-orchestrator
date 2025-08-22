@@ -404,29 +404,100 @@ import { ThemeService } from '../../services/theme.service';
       background: var(--bg-primary) !important;
     }
 
-    /* Form Field Styling */
+    /* Form Field Styling - Comprehensive Material Design Overrides */
     ::ng-deep .mat-mdc-form-field {
+      /* Filled appearance */
       --mdc-filled-text-field-container-color: var(--bg-primary);
       --mdc-filled-text-field-label-text-color: var(--text-secondary);
       --mdc-filled-text-field-input-text-color: var(--text-primary);
+      
+      /* Outlined appearance */
       --mdc-outlined-text-field-outline-color: var(--border-light);
       --mdc-outlined-text-field-focus-outline-color: var(--brand-primary);
       --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
       --mdc-outlined-text-field-label-text-color: var(--text-secondary);
       --mdc-outlined-text-field-input-text-color: var(--text-primary);
+      --mdc-outlined-text-field-container-color: transparent;
+      
+      /* Additional overrides */
+      --mdc-text-field-caret-color: var(--brand-primary);
+      --mdc-text-field-focus-label-text-color: var(--brand-primary);
+      --mdc-text-field-label-text-color: var(--text-secondary);
+      --mdc-text-field-input-text-color: var(--text-primary);
+      
+      font-family: var(--font-family-sans) !important;
+    }
+
+    /* Specific overrides for outlined form fields */
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline {
+      background: transparent !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__leading,
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__notch,
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__trailing {
+      border-color: var(--border-light) !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline:hover .mdc-notched-outline__leading,
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline:hover .mdc-notched-outline__notch,
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline:hover .mdc-notched-outline__trailing {
+      border-color: var(--border-medium) !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__leading,
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__notch,
+    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__trailing {
+      border-color: var(--brand-primary) !important;
+      border-width: 2px !important;
+    }
+
+    /* Label styling */
+    ::ng-deep .mat-mdc-form-field-label {
+      color: var(--text-secondary) !important;
+      font-family: var(--font-family-sans) !important;
     }
 
     ::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-label {
       color: var(--brand-primary) !important;
     }
 
+    ::ng-deep .mat-mdc-form-field-label-wrapper .mat-mdc-form-field-label {
+      color: var(--text-secondary) !important;
+    }
+
+    /* Input element styling */
     ::ng-deep .mat-mdc-input-element {
       color: var(--text-primary) !important;
       caret-color: var(--brand-primary) !important;
+      font-family: var(--font-family-sans) !important;
+      background: transparent !important;
     }
 
     ::ng-deep .mat-mdc-input-element::placeholder {
       color: var(--text-tertiary) !important;
+      opacity: 1 !important;
+    }
+
+    /* Suffix icon styling */
+    ::ng-deep .mat-mdc-form-field-icon-suffix {
+      color: var(--text-tertiary) !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-icon-suffix {
+      color: var(--brand-primary) !important;
+    }
+
+    /* Fix for notched outline */
+    ::ng-deep .mdc-notched-outline {
+      opacity: 1 !important;
+    }
+
+    ::ng-deep .mdc-notched-outline__leading,
+    ::ng-deep .mdc-notched-outline__notch,
+    ::ng-deep .mdc-notched-outline__trailing {
+      border-style: solid !important;
+      border-width: 1px !important;
     }
 
     /* Button Styling */
