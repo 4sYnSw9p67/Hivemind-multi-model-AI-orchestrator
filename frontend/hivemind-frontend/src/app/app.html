@@ -5,13 +5,23 @@
     <div class="header-content">
       <div class="brand">
         <div class="brand-icon">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="logo-icon">
-            <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="0.5"/>
-            <circle cx="12" cy="12" r="1.5"/>
-            <circle cx="8" cy="8" r="1"/>
-            <circle cx="16" cy="8" r="1"/>
-            <circle cx="8" cy="16" r="1"/>
-            <circle cx="16" cy="16" r="1"/>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="logo-icon">
+            <!-- Central AI core -->
+            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            <!-- Neural network connections -->
+            <path d="M12 3v6m0 6v6"/>
+            <path d="M3 12h6m6 0h6"/>
+            <path d="M5.636 5.636l4.242 4.242m4.242 4.242l4.242 4.242"/>
+            <path d="M18.364 5.636l-4.242 4.242m-4.242 4.242l-4.242 4.242"/>
+            <!-- Outer nodes -->
+            <circle cx="12" cy="3" r="1" fill="currentColor"/>
+            <circle cx="21" cy="12" r="1" fill="currentColor"/>
+            <circle cx="12" cy="21" r="1" fill="currentColor"/>
+            <circle cx="3" cy="12" r="1" fill="currentColor"/>
+            <circle cx="18.364" cy="5.636" r="0.8" fill="currentColor"/>
+            <circle cx="18.364" cy="18.364" r="0.8" fill="currentColor"/>
+            <circle cx="5.636" cy="18.364" r="0.8" fill="currentColor"/>
+            <circle cx="5.636" cy="5.636" r="0.8" fill="currentColor"/>
           </svg>
         </div>
         <div class="brand-text">
@@ -38,11 +48,11 @@
         </button>
         <button class="btn btn-ghost btn-sm" [title]="currentTheme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'" (click)="toggleTheme()">
           <svg *ngIf="currentTheme === 'light'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-lg">
-            <circle cx="12" cy="12" r="5"/>
-            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
           <svg *ngIf="currentTheme === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-lg">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
           </svg>
         </button>
       </div>

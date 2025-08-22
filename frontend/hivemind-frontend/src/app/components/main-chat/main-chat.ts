@@ -177,7 +177,7 @@ export class MainChatComponent implements AfterViewChecked {
     const senderNames: Record<string, string> = {
       'user': 'You',
       'assistant': 'Hivemind',
-      'system': 'System'
+      'system': 'System Message'
     };
     return senderNames[type] || 'Unknown';
   }
