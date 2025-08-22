@@ -83,32 +83,32 @@
   --space-20: 5rem;
 }
 
-/* Dark theme support */
+/* Dark theme support - Softer, easier on the eyes */
 :root[data-theme="dark"] {
-  --bg-primary: #0c0a09;
-  --bg-secondary: #1c1917;
-  --bg-tertiary: #292524;
-  --bg-code: #000000;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #262626;
+  --bg-tertiary: #333333;
+  --bg-code: #1e1e1e;
   
-  --text-primary: #fafaf9;
-  --text-secondary: #d6d3d1;
-  --text-tertiary: #a8a29e;
-  --text-inverse: #1c1917;
+  --text-primary: #f5f5f5;
+  --text-secondary: #d4d4d4;
+  --text-tertiary: #a3a3a3;
+  --text-inverse: #1a1a1a;
   
-  --border-light: #292524;
-  --border-medium: #44403c;
-  --border-strong: #57534e;
+  --border-light: #404040;
+  --border-medium: #525252;
+  --border-strong: #737373;
   
-  --neutral-50: #1c1917;
-  --neutral-100: #292524;
-  --neutral-200: #44403c;
-  --neutral-300: #57534e;
-  --neutral-400: #78716c;
-  --neutral-500: #a8a29e;
-  --neutral-600: #d6d3d1;
-  --neutral-700: #e7e5e4;
-  --neutral-800: #f5f5f4;
-  --neutral-900: #fafaf9;
+  --neutral-50: #262626;
+  --neutral-100: #333333;
+  --neutral-200: #404040;
+  --neutral-300: #525252;
+  --neutral-400: #737373;
+  --neutral-500: #a3a3a3;
+  --neutral-600: #d4d4d4;
+  --neutral-700: #e5e5e5;
+  --neutral-800: #f5f5f5;
+  --neutral-900: #fafafa;
 }
 
 /* Global Reset and Base Styles */
