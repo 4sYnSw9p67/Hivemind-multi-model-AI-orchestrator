@@ -7,6 +7,11 @@ export interface ApiKeys {
     gemini: string;
 }
 
+export interface UserPreferences {
+    enableMasterAI: boolean;
+    autoCreateAgents: boolean;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -52,6 +57,11 @@ export class ApiKeysService {
         return !!(keys.openai?.trim() || keys.anthropic?.trim() || keys.gemini?.trim());
     }
 
+    saveApiKeys(keys: ApiKeys) {
+        this.apiKeys.next(keys);
+        localStorage.setItem('hivemind-api-keys', JSON.stringify(keys));
+    }
+
     clearApiKeys() {
         const emptyKeys: ApiKeys = {
             openai: '',
@@ -60,5 +70,24 @@ export class ApiKeysService {
         };
         this.apiKeys.next(emptyKeys);
         localStorage.removeItem('hivemind-api-keys');
+    }
+
+    getPreferences(): UserPreferences {
+        const saved = localStorage.getItem('hivemind-preferences');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (error) {
+                console.warn('Failed to load preferences from localStorage:', error);
+            }
+        }
+        return {
+            enableMasterAI: true,
+            autoCreateAgents: false
+        };
+    }
+
+    savePreferences(preferences: UserPreferences) {
+        localStorage.setItem('hivemind-preferences', JSON.stringify(preferences));
     }
 }

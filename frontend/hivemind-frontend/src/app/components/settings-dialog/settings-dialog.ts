@@ -8,7 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
+import { ApiKeysService, ApiKeys, UserPreferences } from '../../services/api-keys.service';
 import { ThemeService } from '../../services/theme.service';
 
 @Component({
@@ -27,165 +27,263 @@ import { ThemeService } from '../../services/theme.service';
   ],
   template: `
     <div class="settings-dialog">
+      <!-- Header -->
       <div class="dialog-header">
-        <h2 mat-dialog-title>Settings</h2>
-        <button mat-icon-button (click)="close()">
-          <mat-icon>close</mat-icon>
+        <h2>Settings</h2>
+        <button class="close-btn" (click)="close()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
-      <mat-dialog-content class="dialog-content">
-        <mat-tab-group>
-          <mat-tab label="API Keys">
-            <div class="tab-content">
-              <div class="api-keys-section">
-                <div class="section-header">
-                  <h3>AI Model API Keys</h3>
-                  <p class="section-description">
-                    Configure your API keys to enable AI model integration. Keys are stored locally and never sent to external servers.
-                  </p>
-                </div>
+      <!-- Content -->
+      <div class="dialog-content">
+        <div class="tabs-container">
+          <div class="tab-nav">
+            <button 
+              class="tab-button" 
+              [class.active]="activeTab === 'keys'" 
+              (click)="activeTab = 'keys'"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="16" r="1"/>
+                <path d="m14 16 2-2 4 4"/>
+                <path d="M6 16h6"/>
+                <path d="M7.5 13.5 4 10l8-8 3 3-8 8z"/>
+              </svg>
+              API Keys
+            </button>
+            <button 
+              class="tab-button" 
+              [class.active]="activeTab === 'preferences'" 
+              (click)="activeTab = 'preferences'"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Preferences
+            </button>
+          </div>
 
-                <div class="form-grid">
-                  <div class="form-group">
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>OpenAI API Key</mat-label>
-                      <input 
-                        matInput 
-                        type="password"
-                        [(ngModel)]="apiKeys.openai"
-                        placeholder="sk-..."
-                        autocomplete="off"
-                      />
-                      <mat-icon matSuffix>vpn_key</mat-icon>
-                    </mat-form-field>
-                    <div class="field-help">
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">
-                        Get your OpenAI API key
-                        <mat-icon>open_in_new</mat-icon>
-                      </a>
-                    </div>
-                  </div>
+          <!-- API Keys Tab -->
+          <div class="tab-content" *ngIf="activeTab === 'keys'">
+            <div class="section">
+              <div class="section-header">
+                <h3>AI Model API Keys</h3>
+                <p>Configure your API keys to enable AI model integration. Keys are stored locally and never sent to external servers.</p>
+              </div>
 
-                  <div class="form-group">
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Anthropic API Key</mat-label>
-                      <input 
-                        matInput 
-                        type="password"
-                        [(ngModel)]="apiKeys.anthropic"
-                        placeholder="sk-ant-..."
-                        autocomplete="off"
-                      />
-                      <mat-icon matSuffix>vpn_key</mat-icon>
-                    </mat-form-field>
-                    <div class="field-help">
-                      <a href="https://console.anthropic.com/" target="_blank" rel="noopener">
-                        Get your Anthropic API key
-                        <mat-icon>open_in_new</mat-icon>
-                      </a>
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Google Gemini API Key</mat-label>
-                      <input 
-                        matInput 
-                        type="password"
-                        [(ngModel)]="apiKeys.gemini"
-                        placeholder="AI..."
-                        autocomplete="off"
-                      />
-                      <mat-icon matSuffix>vpn_key</mat-icon>
-                    </mat-form-field>
-                    <div class="field-help">
-                      <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">
-                        Get your Gemini API key
-                        <mat-icon>open_in_new</mat-icon>
-                      </a>
-                    </div>
+              <div class="form-container">
+                <!-- OpenAI -->
+                <div class="form-group">
+                  <label class="form-label">
+                    <span class="label-text">OpenAI API Key</span>
+                    <span class="label-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="16" r="1"/>
+                        <path d="m14 16 2-2 4 4"/>
+                        <path d="M6 16h6"/>
+                        <path d="M7.5 13.5 4 10l8-8 3 3-8 8z"/>
+                      </svg>
+                    </span>
+                  </label>
+                  <input 
+                    class="form-input"
+                    type="password"
+                    [(ngModel)]="apiKeys.openai"
+                    placeholder="sk-..."
+                    autocomplete="off"
+                  />
+                  <div class="form-help">
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">
+                      Get your OpenAI API key
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 17L17 7"/>
+                        <path d="M7 7h10v10"/>
+                      </svg>
+                    </a>
                   </div>
                 </div>
 
-                <div class="api-status">
-                  <div class="status-item" [class.configured]="apiKeys.openai">
-                    <mat-icon>{{apiKeys.openai ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
-                    <span>OpenAI {{apiKeys.openai ? 'Configured' : 'Not configured'}}</span>
+                <!-- Anthropic -->
+                <div class="form-group">
+                  <label class="form-label">
+                    <span class="label-text">Anthropic API Key</span>
+                    <span class="label-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="16" r="1"/>
+                        <path d="m14 16 2-2 4 4"/>
+                        <path d="M6 16h6"/>
+                        <path d="M7.5 13.5 4 10l8-8 3 3-8 8z"/>
+                      </svg>
+                    </span>
+                  </label>
+                  <input 
+                    class="form-input"
+                    type="password"
+                    [(ngModel)]="apiKeys.anthropic"
+                    placeholder="sk-ant-..."
+                    autocomplete="off"
+                  />
+                  <div class="form-help">
+                    <a href="https://console.anthropic.com/" target="_blank" rel="noopener">
+                      Get your Anthropic API key
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 17L17 7"/>
+                        <path d="M7 7h10v10"/>
+                      </svg>
+                    </a>
                   </div>
-                  <div class="status-item" [class.configured]="apiKeys.anthropic">
-                    <mat-icon>{{apiKeys.anthropic ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
-                    <span>Anthropic {{apiKeys.anthropic ? 'Configured' : 'Not configured'}}</span>
-                  </div>
-                  <div class="status-item" [class.configured]="apiKeys.gemini">
-                    <mat-icon>{{apiKeys.gemini ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
-                    <span>Gemini {{apiKeys.gemini ? 'Configured' : 'Not configured'}}</span>
+                </div>
+
+                <!-- Gemini -->
+                <div class="form-group">
+                  <label class="form-label">
+                    <span class="label-text">Google Gemini API Key</span>
+                    <span class="label-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="16" r="1"/>
+                        <path d="m14 16 2-2 4 4"/>
+                        <path d="M6 16h6"/>
+                        <path d="M7.5 13.5 4 10l8-8 3 3-8 8z"/>
+                      </svg>
+                    </span>
+                  </label>
+                  <input 
+                    class="form-input"
+                    type="password"
+                    [(ngModel)]="apiKeys.gemini"
+                    placeholder="AI..."
+                    autocomplete="off"
+                  />
+                  <div class="form-help">
+                    <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">
+                      Get your Gemini API key
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 17L17 7"/>
+                        <path d="M7 7h10v10"/>
+                      </svg>
+                    </a>
                   </div>
                 </div>
               </div>
-            </div>
-          </mat-tab>
 
-          <mat-tab label="Preferences">
-            <div class="tab-content">
-              <div class="preferences-section">
-                <div class="section-header">
-                  <h3>Application Preferences</h3>
-                  <p class="section-description">
-                    Customize your Hivemind experience.
-                  </p>
-                </div>
-
-                <div class="preference-item">
-                  <div class="preference-info">
-                    <h4>Master AI Evaluation</h4>
-                    <p>Enable advanced response evaluation and ranking</p>
+              <!-- Status Indicators -->
+              <div class="status-grid">
+                <div class="status-item" [class.configured]="apiKeys.openai">
+                  <div class="status-icon">
+                    <svg *ngIf="apiKeys.openai" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    <svg *ngIf="!apiKeys.openai" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                    </svg>
                   </div>
-                  <mat-slide-toggle [(ngModel)]="preferences.enableMasterAI">
-                  </mat-slide-toggle>
+                  <span>OpenAI {{apiKeys.openai ? 'Configured' : 'Not configured'}}</span>
                 </div>
+                <div class="status-item" [class.configured]="apiKeys.anthropic">
+                  <div class="status-icon">
+                    <svg *ngIf="apiKeys.anthropic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    <svg *ngIf="!apiKeys.anthropic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                  </div>
+                  <span>Anthropic {{apiKeys.anthropic ? 'Configured' : 'Not configured'}}</span>
+                </div>
+                <div class="status-item" [class.configured]="apiKeys.gemini">
+                  <div class="status-icon">
+                    <svg *ngIf="apiKeys.gemini" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    <svg *ngIf="!apiKeys.gemini" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                  </div>
+                  <span>Gemini {{apiKeys.gemini ? 'Configured' : 'Not configured'}}</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
+          <!-- Preferences Tab -->
+          <div class="tab-content" *ngIf="activeTab === 'preferences'">
+            <div class="section">
+              <div class="section-header">
+                <h3>Application Preferences</h3>
+                <p>Customize how Hivemind behaves and processes your requests.</p>
+              </div>
+
+              <div class="preferences-grid">
                 <div class="preference-item">
                   <div class="preference-info">
                     <h4>Auto-create Agents</h4>
-                    <p>Automatically create agents based on configured API keys</p>
+                    <p>Automatically create AI agents for configured API keys when the app starts.</p>
                   </div>
-                  <mat-slide-toggle [(ngModel)]="preferences.autoCreateAgents">
-                  </mat-slide-toggle>
+                  <div class="preference-control">
+                    <label class="toggle-switch">
+                      <input type="checkbox" [(ngModel)]="preferences.autoCreateAgents">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="preference-item">
+                  <div class="preference-info">
+                    <h4>Enable Master AI Evaluation</h4>
+                    <p>Use a master AI to evaluate and rank responses from different models for better results.</p>
+                  </div>
+                  <div class="preference-control">
+                    <label class="toggle-switch">
+                      <input type="checkbox" [(ngModel)]="preferences.enableMasterAI">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
-          </mat-tab>
-        </mat-tab-group>
-      </mat-dialog-content>
+          </div>
+        </div>
+      </div>
 
-      <mat-dialog-actions class="dialog-actions">
-        <button mat-button (click)="clearKeys()" class="clear-button">
-          <mat-icon>delete</mat-icon>
-          Clear All Keys
+      <!-- Actions -->
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" (click)="clearAll()">
+          Clear All
         </button>
         <div class="spacer"></div>
-        <button mat-button (click)="close()">Cancel</button>
-        <button mat-raised-button color="primary" (click)="save()">
-          <mat-icon>save</mat-icon>
+        <button class="btn btn-ghost" (click)="close()">
+          Cancel
+        </button>
+        <button class="btn btn-primary" (click)="save()">
           Save Settings
         </button>
-      </mat-dialog-actions>
+      </div>
     </div>
   `,
   styles: [`
-    /* Settings Dialog - Full Theme Support */
     .settings-dialog {
       width: 600px;
       max-width: 90vw;
+      max-height: 90vh;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       font-family: var(--font-family-sans);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-xl);
     }
 
     .dialog-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: var(--space-4) var(--space-6) 0 var(--space-6);
+      justify-content: space-between;
+      padding: var(--space-6);
+      border-bottom: 1px solid var(--border-light);
       background: var(--bg-primary);
     }
 
@@ -196,19 +294,78 @@ import { ThemeService } from '../../services/theme.service';
       color: var(--text-primary);
     }
 
-    .dialog-content {
-      padding: var(--space-6);
-      min-height: 400px;
-      background: var(--bg-primary);
+    .close-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .close-btn:hover {
+      background: var(--bg-tertiary);
       color: var(--text-primary);
     }
 
-    .tab-content {
-      padding: var(--space-6) 0;
+    .dialog-content {
+      max-height: 60vh;
+      overflow-y: auto;
+      background: var(--bg-primary);
     }
 
-    .section-header {
-      margin-bottom: var(--space-8);
+    .tabs-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-nav {
+      display: flex;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--bg-secondary);
+    }
+
+    .tab-button {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-4) var(--space-6);
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab-button:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .tab-button.active {
+      color: var(--brand-primary);
+      border-bottom-color: var(--brand-primary);
+      background: var(--bg-primary);
+    }
+
+    .tab-content {
+      padding: var(--space-6);
+      background: var(--bg-primary);
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
     }
 
     .section-header h3 {
@@ -218,18 +375,17 @@ import { ThemeService } from '../../services/theme.service';
       color: var(--text-primary);
     }
 
-    .section-description {
+    .section-header p {
       margin: 0;
       color: var(--text-secondary);
       font-size: 0.875rem;
       line-height: 1.5;
     }
 
-    .form-grid {
+    .form-container {
       display: flex;
       flex-direction: column;
       gap: var(--space-6);
-      margin-bottom: var(--space-8);
     }
 
     .form-group {
@@ -238,38 +394,72 @@ import { ThemeService } from '../../services/theme.service';
       gap: var(--space-2);
     }
 
-    .full-width {
+    .form-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .label-text {
+      flex: 1;
+    }
+
+    .label-icon {
+      color: var(--text-tertiary);
+    }
+
+    .form-input {
       width: 100%;
-    }
-
-    .field-help {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
-      font-size: 0.75rem;
-    }
-
-    .field-help a {
-      color: var(--brand-primary);
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      font-family: var(--font-family-sans);
       transition: all 0.15s ease-in-out;
     }
 
-    .field-help a:hover {
-      text-decoration: underline;
+    .form-input:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 3px var(--brand-primary-light);
+      background: var(--bg-primary);
+    }
+
+    .form-input:hover {
+      border-color: var(--border-medium);
+    }
+
+    .form-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .form-help {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .form-help a {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      color: var(--brand-primary);
+      text-decoration: none;
+      font-size: 0.75rem;
+      transition: opacity 0.15s ease-in-out;
+    }
+
+    .form-help a:hover {
       opacity: 0.8;
+      text-decoration: underline;
     }
 
-    .field-help mat-icon {
-      font-size: 1rem;
-      width: 1rem;
-      height: 1rem;
-    }
-
-    .api-status {
+    .status-grid {
       display: flex;
       flex-direction: column;
       gap: var(--space-3);
@@ -283,41 +473,46 @@ import { ThemeService } from '../../services/theme.service';
       display: flex;
       align-items: center;
       gap: var(--space-3);
-      font-size: 0.875rem;
       color: var(--text-secondary);
-      transition: color 0.15s ease-in-out;
+      font-size: 0.875rem;
     }
 
     .status-item.configured {
       color: var(--success);
     }
 
-    .status-item mat-icon {
-      font-size: 1.25rem;
-      width: 1.25rem;
-      height: 1.25rem;
+    .status-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
     }
 
-    .preferences-section {
+    .preferences-grid {
       display: flex;
       flex-direction: column;
-      gap: var(--space-6);
+      gap: var(--space-4);
     }
 
     .preference-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       padding: var(--space-4);
+      background: var(--bg-secondary);
       border: 1px solid var(--border-light);
       border-radius: var(--radius-md);
-      background: var(--bg-primary);
       transition: all 0.15s ease-in-out;
     }
 
     .preference-item:hover {
       border-color: var(--border-medium);
       box-shadow: var(--shadow-sm);
+    }
+
+    .preference-info {
+      flex: 1;
     }
 
     .preference-info h4 {
@@ -334,6 +529,57 @@ import { ThemeService } from '../../services/theme.service';
       line-height: 1.4;
     }
 
+    .preference-control {
+      flex-shrink: 0;
+      margin-left: var(--space-4);
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--neutral-300);
+      border-radius: 24px;
+      transition: 0.2s;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: var(--brand-primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
     .dialog-actions {
       display: flex;
       align-items: center;
@@ -347,252 +593,64 @@ import { ThemeService } from '../../services/theme.service';
       flex: 1;
     }
 
-    .clear-button {
-      color: var(--error) !important;
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      border: none;
+      text-decoration: none;
     }
 
-    .clear-button:hover {
-      background: var(--error-light) !important;
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-light);
     }
 
-    /* Material Component Theme Overrides */
-    ::ng-deep .mat-mdc-dialog-container {
-      background: var(--bg-primary) !important;
-      color: var(--text-primary) !important;
-      border-radius: var(--radius-lg) !important;
-      box-shadow: var(--shadow-xl) !important;
+    .btn-ghost:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--border-medium);
     }
 
-    ::ng-deep .mat-mdc-dialog-title {
-      color: var(--text-primary) !important;
+    .btn-primary {
+      background: var(--brand-primary);
+      color: var(--text-inverse);
+      border: 1px solid var(--brand-primary);
     }
 
-    ::ng-deep .mat-mdc-dialog-content {
-      color: var(--text-primary) !important;
+    .btn-primary:hover {
+      background: var(--brand-primary-hover);
+      border-color: var(--brand-primary-hover);
     }
 
-    ::ng-deep .mat-mdc-dialog-actions {
-      background: var(--bg-secondary) !important;
+    /* Dark theme specific adjustments */
+    :root[data-theme="dark"] .toggle-slider {
+      background-color: var(--neutral-600);
     }
 
-    /* Tab Group Styling */
-    ::ng-deep .mat-mdc-tab-group {
-      --mdc-tab-indicator-active-indicator-color: var(--brand-primary);
-      background: var(--bg-primary) !important;
-    }
-
-    ::ng-deep .mat-mdc-tab-header {
-      background: var(--bg-primary) !important;
-      border-bottom: 1px solid var(--border-light) !important;
-    }
-
-    ::ng-deep .mat-mdc-tab .mdc-tab__text-label {
-      color: var(--text-secondary) !important;
-      font-weight: 500 !important;
-    }
-
-    ::ng-deep .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
-      color: var(--brand-primary) !important;
-      font-weight: 600 !important;
-    }
-
-    ::ng-deep .mat-mdc-tab:hover .mdc-tab__text-label {
-      color: var(--text-primary) !important;
-    }
-
-    ::ng-deep .mat-mdc-tab-body-wrapper {
-      background: var(--bg-primary) !important;
-    }
-
-    /* Form Field Styling - Comprehensive Material Design Overrides */
-    ::ng-deep .mat-mdc-form-field {
-      /* Filled appearance */
-      --mdc-filled-text-field-container-color: var(--bg-primary);
-      --mdc-filled-text-field-label-text-color: var(--text-secondary);
-      --mdc-filled-text-field-input-text-color: var(--text-primary);
-      
-      /* Outlined appearance */
-      --mdc-outlined-text-field-outline-color: var(--border-light);
-      --mdc-outlined-text-field-focus-outline-color: var(--brand-primary);
-      --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
-      --mdc-outlined-text-field-label-text-color: var(--text-secondary);
-      --mdc-outlined-text-field-input-text-color: var(--text-primary);
-      --mdc-outlined-text-field-container-color: transparent;
-      
-      /* Additional overrides */
-      --mdc-text-field-caret-color: var(--brand-primary);
-      --mdc-text-field-focus-label-text-color: var(--brand-primary);
-      --mdc-text-field-label-text-color: var(--text-secondary);
-      --mdc-text-field-input-text-color: var(--text-primary);
-      
-      font-family: var(--font-family-sans) !important;
-    }
-
-    /* Specific overrides for outlined form fields */
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline {
-      background: transparent !important;
-    }
-
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__leading,
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__notch,
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline .mdc-notched-outline__trailing {
-      border-color: var(--border-light) !important;
-    }
-
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline:hover .mdc-notched-outline__leading,
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline:hover .mdc-notched-outline__notch,
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline:hover .mdc-notched-outline__trailing {
-      border-color: var(--border-medium) !important;
-    }
-
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__leading,
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__notch,
-    ::ng-deep .mat-mdc-form-field.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__trailing {
-      border-color: var(--brand-primary) !important;
-      border-width: 2px !important;
-    }
-
-    /* Label styling */
-    ::ng-deep .mat-mdc-form-field-label {
-      color: var(--text-secondary) !important;
-      font-family: var(--font-family-sans) !important;
-    }
-
-    ::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-label {
-      color: var(--brand-primary) !important;
-    }
-
-    ::ng-deep .mat-mdc-form-field-label-wrapper .mat-mdc-form-field-label {
-      color: var(--text-secondary) !important;
-    }
-
-    /* Input element styling */
-    ::ng-deep .mat-mdc-input-element {
-      color: var(--text-primary) !important;
-      caret-color: var(--brand-primary) !important;
-      font-family: var(--font-family-sans) !important;
-      background: transparent !important;
-    }
-
-    ::ng-deep .mat-mdc-input-element::placeholder {
-      color: var(--text-tertiary) !important;
-      opacity: 1 !important;
-    }
-
-    /* Suffix icon styling */
-    ::ng-deep .mat-mdc-form-field-icon-suffix {
-      color: var(--text-tertiary) !important;
-    }
-
-    ::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-icon-suffix {
-      color: var(--brand-primary) !important;
-    }
-
-    /* Fix for notched outline */
-    ::ng-deep .mdc-notched-outline {
-      opacity: 1 !important;
-    }
-
-    ::ng-deep .mdc-notched-outline__leading,
-    ::ng-deep .mdc-notched-outline__notch,
-    ::ng-deep .mdc-notched-outline__trailing {
-      border-style: solid !important;
-      border-width: 1px !important;
-    }
-
-    /* Button Styling */
-    ::ng-deep .mat-mdc-button {
-      color: var(--text-secondary) !important;
-      font-weight: 500 !important;
-    }
-
-    ::ng-deep .mat-mdc-button:hover {
-      background: var(--bg-tertiary) !important;
-      color: var(--text-primary) !important;
-    }
-
-    ::ng-deep .mat-mdc-raised-button.mat-primary {
-      background: var(--brand-primary) !important;
-      color: var(--text-inverse) !important;
-      box-shadow: var(--shadow-md) !important;
-    }
-
-    ::ng-deep .mat-mdc-raised-button.mat-primary:hover {
-      background: var(--brand-primary-hover) !important;
-      box-shadow: var(--shadow-lg) !important;
-    }
-
-    ::ng-deep .mat-mdc-icon-button {
-      color: var(--text-secondary) !important;
-    }
-
-    ::ng-deep .mat-mdc-icon-button:hover {
-      background: var(--bg-tertiary) !important;
-      color: var(--text-primary) !important;
-    }
-
-    /* Slide Toggle Styling */
-    ::ng-deep .mat-mdc-slide-toggle {
-      --mdc-switch-selected-track-color: var(--brand-primary);
-      --mdc-switch-selected-handle-color: var(--text-inverse);
-      --mdc-switch-selected-hover-track-color: var(--brand-primary-hover);
-      --mdc-switch-unselected-track-color: var(--neutral-300);
-      --mdc-switch-unselected-handle-color: var(--neutral-500);
-      --mdc-switch-unselected-hover-track-color: var(--neutral-400);
-    }
-
-    ::ng-deep .mat-mdc-slide-toggle .mdc-switch {
-      --mdc-switch-track-height: 20px;
-      --mdc-switch-track-width: 36px;
-    }
-
-    ::ng-deep .mat-mdc-slide-toggle.mat-checked .mdc-switch__track {
-      background-color: var(--brand-primary) !important;
-      opacity: 1 !important;
-    }
-
-    ::ng-deep .mat-mdc-slide-toggle.mat-checked .mdc-switch__handle {
-      background-color: var(--text-inverse) !important;
-    }
-
-    ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__track {
-      background-color: var(--neutral-300) !important;
-      opacity: 1 !important;
-    }
-
-    ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__handle {
-      background-color: var(--neutral-500) !important;
-    }
-
-    /* Icon Styling */
-    ::ng-deep mat-icon {
-      color: inherit !important;
-    }
-
-    /* Dark mode specific overrides */
-    :root[data-theme="dark"] ::ng-deep .mat-mdc-form-field {
-      --mdc-outlined-text-field-outline-color: var(--border-light);
-      --mdc-outlined-text-field-focus-outline-color: var(--brand-primary);
-      --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
-    }
-
-    :root[data-theme="dark"] ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__track {
-      background-color: var(--neutral-600) !important;
-    }
-
-    :root[data-theme="dark"] ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__handle {
-      background-color: var(--neutral-400) !important;
+    :root[data-theme="dark"] .toggle-slider:before {
+      background-color: var(--neutral-300);
     }
   `]
 })
 export class SettingsDialogComponent {
+  activeTab: 'keys' | 'preferences' = 'keys';
+
   apiKeys: ApiKeys = {
     openai: '',
     anthropic: '',
     gemini: ''
   };
 
-  preferences = {
+  preferences: UserPreferences = {
     enableMasterAI: true,
     autoCreateAgents: false
   };
@@ -604,25 +662,27 @@ export class SettingsDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.apiKeys = { ...this.apiKeysService.getApiKeys() };
+    this.preferences = { ...this.apiKeysService.getPreferences() };
   }
 
   save() {
-    this.apiKeysService.updateApiKeys(this.apiKeys);
+    this.apiKeysService.saveApiKeys(this.apiKeys);
+    this.apiKeysService.savePreferences(this.preferences);
     this.dialogRef.close({
       apiKeys: this.apiKeys,
       preferences: this.preferences
     });
   }
 
-  clearKeys() {
+  close() {
+    this.dialogRef.close();
+  }
+
+  clearAll() {
     this.apiKeys = {
       openai: '',
       anthropic: '',
       gemini: ''
     };
-  }
-
-  close() {
-    this.dialogRef.close();
   }
 }
