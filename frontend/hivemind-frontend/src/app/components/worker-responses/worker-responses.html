@@ -1,85 +1,156 @@
-<div class="worker-responses">
-  <div class="header">
-    <h2>AI Responses</h2>
-    <div class="response-count">
-      {{ responses.length }} response(s)
+<!-- Worker Responses - Modern Design -->
+<div class="responses-panel">
+  <!-- Header Section -->
+  <header class="panel-header">
+    <div class="header-content">
+      <h2 class="header-title">Model Responses</h2>
+      <p class="header-subtitle">Individual AI model outputs and ratings</p>
     </div>
-  </div>
+    <div class="response-count">
+      <span class="count-badge">{{ responses.length }}</span>
+    </div>
+  </header>
   
-  <div class="responses-container">
+  <!-- Responses Container -->
+  <section class="responses-container">
+    <!-- Empty State -->
     <div *ngIf="responses.length === 0" class="empty-state">
-      <div class="empty-icon">🤖</div>
-      <p>AI responses will appear here when you ask questions</p>
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          <circle cx="8" cy="8" r="2"/>
+          <circle cx="16" cy="8" r="2"/>
+          <circle cx="12" cy="16" r="2"/>
+        </svg>
+      </div>
+      <h3 class="empty-title">No responses yet</h3>
+      <p class="empty-description">AI model responses will appear here when you start a conversation</p>
     </div>
     
-    <div class="response-card" *ngFor="let response of responses; trackBy: trackByResponseId">
-      <div class="response-header">
-        <div class="model-info">
-          <span class="model-name">{{ response.model }}</span>
-          <span class="response-time">{{ response.timestamp | date:'HH:mm:ss' }}</span>
+    <!-- Response Cards -->
+    <div class="responses-list">
+      <div 
+        class="response-card animate-fade-in" 
+        *ngFor="let response of responses; trackBy: trackByResponseId"
+        [class.has-error]="response.error"
+        [class.is-rated]="response.rating"
+      >
+        <!-- Card Header -->
+        <div class="card-header">
+          <div class="model-info">
+            <div class="model-avatar" [attr.data-model]="response.model">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+            </div>
+            <div class="model-details">
+              <span class="model-name">{{ getModelDisplayName(response.model) }}</span>
+              <span class="response-time">{{ response.timestamp | date:'HH:mm:ss' }}</span>
+            </div>
+          </div>
+          
+          <div class="response-actions">
+            <button 
+              (click)="rateResponse(response, 'good')"
+              [class.active]="response.rating === 'good'"
+              class="btn btn-ghost btn-sm rating-button good"
+              title="Good response"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+              </svg>
+            </button>
+            <button 
+              (click)="rateResponse(response, 'bad')"
+              [class.active]="response.rating === 'bad'"
+              class="btn btn-ghost btn-sm rating-button bad"
+              title="Poor response"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.58-6.59c.37-.36.59-.86.59-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="response-actions">
-          <button 
-            (click)="rateResponse(response, 'good')"
-            [class.active]="response.rating === 'good'"
-            class="rating-button good"
-            title="Good response"
-          >
-            👍
-          </button>
-          <button 
-            (click)="rateResponse(response, 'bad')"
-            [class.active]="response.rating === 'bad'"
-            class="rating-button bad"
-            title="Poor response"
-          >
-            👎
-          </button>
+        
+        <!-- Query Context (if available) -->
+        <div class="query-context" *ngIf="response.query">
+          <div class="context-label">Query</div>
+          <div class="context-text">{{ response.query }}</div>
         </div>
-      </div>
-      
-      <div class="query-context" *ngIf="response.query">
-        <strong>Query:</strong> {{ response.query }}
-      </div>
-      
-      <div class="response-content">
-        <div *ngIf="response.error" class="error-content">
-          <span class="error-icon">⚠️</span>
-          <span class="error-text">{{ response.error }}</span>
+        
+        <!-- Response Content -->
+        <div class="response-content">
+          <!-- Error State -->
+          <div *ngIf="response.error" class="error-content">
+            <div class="error-header">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="error-icon">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+              </svg>
+              <span class="error-title">Error</span>
+            </div>
+            <div class="error-message">{{ response.error }}</div>
+          </div>
+          
+          <!-- Success State -->
+          <div *ngIf="!response.error" class="success-content">
+            <div class="content-text" [innerHTML]="formatResponse(response.output || '')"></div>
+          </div>
         </div>
-        <div *ngIf="!response.error" class="success-content">
-          {{ response.output }}
+        
+        <!-- Response Metadata -->
+        <div class="response-meta" *ngIf="response.processingTime || response.confidence">
+          <div class="meta-items">
+            <div class="meta-item" *ngIf="response.processingTime">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="meta-icon">
+                <path d="M15,1H9V3H15M11,14H13V8H11M19.03,7.39L20.45,5.97C20,5.46 19.55,5 19.04,4.56L17.62,6C16.07,4.74 14.12,4 12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22C17,22 21,17.97 21,13C21,10.88 20.26,8.93 19.03,7.39M12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20Z"/>
+              </svg>
+              <span class="meta-value">{{ response.processingTime }}ms</span>
+            </div>
+            <div class="meta-item" *ngIf="response.confidence">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="meta-icon">
+                <path d="M23,12L20.56,9.22L20.9,5.54L17.29,4.72L15.4,1.54L12,3L8.6,1.54L6.71,4.72L3.1,5.53L3.44,9.21L1,12L3.44,14.78L3.1,18.47L6.71,19.29L8.6,22.47L12,21L15.4,22.46L17.29,19.28L20.9,18.46L20.56,14.78L23,12M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"/>
+              </svg>
+              <span class="meta-value">{{ response.confidence }}%</span>
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <div class="response-meta">
-        <span class="processing-time" *ngIf="response.processingTime">
-          {{ response.processingTime }}ms
-        </span>
-        <span class="confidence" *ngIf="response.confidence">
-          Confidence: {{ response.confidence }}%
-        </span>
       </div>
     </div>
-  </div>
+  </section>
   
-  <div class="analytics" *ngIf="responses.length > 0">
+  <!-- Analytics Section -->
+  <footer class="analytics-section" *ngIf="responses.length > 0">
     <div class="analytics-header">
-      <h3>Analytics</h3>
+      <h3 class="analytics-title">Performance</h3>
     </div>
+    
     <div class="analytics-grid">
-      <div class="stat-card">
-        <div class="stat-value">{{ getSuccessRate() }}%</div>
-        <div class="stat-label">Success Rate</div>
+      <div class="analytics-card">
+        <div class="analytics-value">{{ getSuccessRate() }}%</div>
+        <div class="analytics-label">Success Rate</div>
+        <div class="analytics-trend">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="trend-icon">
+            <path d="M16,6L18.29,8.29L13.41,13.17L9.41,9.17L2,16.59L3.41,18L9.41,12L13.41,16L19.71,9.71L22,12V6H16Z"/>
+          </svg>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ getAverageResponseTime() }}ms</div>
-        <div class="stat-label">Avg Response Time</div>
+      
+      <div class="analytics-card">
+        <div class="analytics-value">{{ getAverageResponseTime() }}</div>
+        <div class="analytics-label">Avg Time</div>
+        <div class="analytics-unit">ms</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ getBestModel() }}</div>
-        <div class="stat-label">Best Model</div>
+      
+      <div class="analytics-card">
+        <div class="analytics-value">{{ getBestModel() }}</div>
+        <div class="analytics-label">Top Model</div>
+        <div class="analytics-badge">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M5,16L3,14L5,12L4,11L1,14L4,17M9,10L12,7L15,10L14,11L12,9L10,11M19,14L17,12L19,10L20,11L23,14L20,17M15,14L12,17L9,14L10,13L12,15L14,13"/>
+          </svg>
+        </div>
       </div>
     </div>
-  </div>
+  </footer>
 </div>

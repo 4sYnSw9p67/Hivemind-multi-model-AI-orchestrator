@@ -1,65 +1,135 @@
+<!-- Agent Creator - Modern Design -->
 <div class="agent-creator">
-  <div class="header">
-    <h2>Create Agents</h2>
-  </div>
-  
-  <div class="content">
-    <div class="form-group">
-      <label for="agent-name">Agent Name</label>
-      <input 
-        id="agent-name"
-        type="text" 
-        [(ngModel)]="newAgent.name" 
-        placeholder="e.g., Code Helper, Research Assistant"
-        class="input"
-      />
+  <!-- Header Section -->
+  <header class="creator-header">
+    <div class="header-content">
+      <h2 class="header-title">AI Agents</h2>
+      <p class="header-subtitle">Configure and manage your AI model instances</p>
+    </div>
+  </header>
+
+  <!-- Agent Creation Form -->
+  <section class="creation-form">
+    <div class="form-header">
+      <h3 class="form-title">Create New Agent</h3>
     </div>
     
-    <div class="form-group">
-      <label for="agent-model">AI Model</label>
-      <select id="agent-model" [(ngModel)]="newAgent.model" class="select">
-        <option value="">Select Model</option>
-        <option value="gpt-4">GPT-4</option>
-        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-        <option value="llama-3.1">LLaMA 3.1</option>
-        <option value="deepseek-coder">DeepSeek Coder</option>
-      </select>
-    </div>
-    
-    <div class="form-group">
-      <label for="agent-specialization">Specialization</label>
-      <textarea 
-        id="agent-specialization"
-        [(ngModel)]="newAgent.specialization"
-        placeholder="Describe what this agent specializes in..."
-        class="textarea"
-        rows="3"
-      ></textarea>
-    </div>
-    
-    <button 
-      (click)="createAgent()" 
-      [disabled]="!canCreateAgent()"
-      class="button button-primary"
-    >
-      Create Agent
-    </button>
-  </div>
-  
-  <div class="agents-list">
-    <h3>Active Agents</h3>
-    <div class="agent-card" *ngFor="let agent of agents">
-      <div class="agent-info">
-        <div class="agent-name">{{ agent.name }}</div>
-        <div class="agent-model">{{ agent.model }}</div>
-        <div class="agent-spec">{{ agent.specialization }}</div>
+    <div class="form-content">
+      <div class="form-group">
+        <label for="agent-name" class="form-label">
+          Agent Name
+          <span class="required">*</span>
+        </label>
+        <input 
+          id="agent-name"
+          type="text" 
+          [(ngModel)]="newAgent.name" 
+          placeholder="e.g., Code Helper, Research Assistant"
+          class="form-control"
+        />
       </div>
+      
+      <div class="form-group">
+        <label for="agent-model" class="form-label">
+          AI Model
+          <span class="required">*</span>
+        </label>
+        <div class="select-wrapper">
+          <select id="agent-model" [(ngModel)]="newAgent.model" class="form-control">
+            <option value="">Choose a model</option>
+            <option value="gpt-4">GPT-4</option>
+            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+            <option value="llama-3.1">LLaMA 3.1</option>
+            <option value="deepseek-coder">DeepSeek Coder</option>
+          </select>
+          <svg class="select-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="agent-specialization" class="form-label">
+          Specialization
+        </label>
+        <textarea 
+          id="agent-specialization"
+          [(ngModel)]="newAgent.specialization"
+          placeholder="Describe what this agent specializes in..."
+          class="form-control"
+          rows="3"
+        ></textarea>
+      </div>
+      
       <button 
-        (click)="removeAgent(agent.id)" 
-        class="button button-danger button-small"
+        (click)="createAgent()" 
+        [disabled]="!canCreateAgent()"
+        class="btn btn-primary create-button"
       >
-        Remove
+        <svg viewBox="0 0 24 24" fill="currentColor" class="button-icon">
+          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+        Create Agent
       </button>
     </div>
-  </div>
+  </section>
+  
+  <!-- Active Agents List -->
+  <section class="agents-section">
+    <div class="section-header">
+      <h3 class="section-title">Active Agents</h3>
+      <div class="agents-count">
+        <span class="count-badge">{{ agents.length }}</span>
+      </div>
+    </div>
+    
+    <div class="agents-list">
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="agents.length === 0">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </div>
+        <p class="empty-text">No agents created yet</p>
+        <p class="empty-subtext">Create your first AI agent to get started</p>
+      </div>
+
+      <!-- Agent Cards -->
+      <div class="agent-card" *ngFor="let agent of agents; trackBy: trackAgent" [class.animate-fade-in]="true">
+        <div class="card-header">
+          <div class="agent-avatar">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+          </div>
+          <div class="agent-status">
+            <span class="status-indicator online"></span>
+          </div>
+        </div>
+        
+        <div class="card-content">
+          <h4 class="agent-name">{{ agent.name }}</h4>
+          <div class="agent-model">
+            <span class="model-badge">{{ getModelDisplayName(agent.model) }}</span>
+          </div>
+          <p class="agent-description" *ngIf="agent.specialization">
+            {{ agent.specialization }}
+          </p>
+        </div>
+        
+        <div class="card-actions">
+          <button 
+            (click)="removeAgent(agent.id)" 
+            class="btn btn-ghost btn-sm remove-button"
+            title="Remove agent"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" class="button-icon">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>

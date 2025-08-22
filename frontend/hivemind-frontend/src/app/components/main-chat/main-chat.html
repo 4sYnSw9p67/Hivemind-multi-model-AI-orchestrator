@@ -1,58 +1,147 @@
-<div class="main-chat">
-  <div class="header">
-    <h2>Hivemind Chat</h2>
-    <div class="status">
-      <span class="status-indicator" [class.active]="activeAgents.length > 0"></span>
-      {{ activeAgents.length }} agent(s) active
+<!-- Modern Chat Interface - Inspired by Cursor Documentation -->
+<div class="chat-container">
+  <!-- Chat Header -->
+  <header class="chat-header">
+    <div class="chat-title">
+      <h1 class="title-text">Hivemind Chat</h1>
+      <p class="subtitle-text">Ask multiple AI models and get the best answer</p>
     </div>
-  </div>
-  
-  <div class="chat-messages" #messagesContainer>
-    <div class="message" *ngFor="let message of messages" [class]="message.type">
-      <div class="message-header">
-        <span class="sender">{{ message.sender }}</span>
-        <span class="timestamp">{{ message.timestamp | date:'HH:mm:ss' }}</span>
+    <div class="chat-stats">
+      <div class="stat-item">
+        <span class="stat-label">Active Models</span>
+        <span class="stat-value">{{ activeAgents.length }}</span>
       </div>
-      <div class="message-content" [innerHTML]="message.content"></div>
     </div>
-    
-    <div *ngIf="isLoading" class="message system">
-      <div class="message-header">
-        <span class="sender">System</span>
-        <span class="timestamp">{{ now | date:'HH:mm:ss' }}</span>
+  </header>
+
+  <!-- Messages Area -->
+  <div class="messages-container" #messagesContainer>
+    <div class="messages-content">
+      <!-- Welcome Message -->
+      <div class="welcome-message" *ngIf="messages.length === 0">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            <circle cx="8" cy="8" r="2"/>
+            <circle cx="16" cy="8" r="2"/>
+            <circle cx="12" cy="16" r="2"/>
+          </svg>
+        </div>
+        <h2 class="welcome-title">Welcome to Hivemind</h2>
+        <p class="welcome-description">
+          Ask any question and our AI orchestrator will query multiple models to give you the best possible answer.
+        </p>
+        <div class="welcome-suggestions">
+          <button class="suggestion-chip" (click)="setSuggestion('Explain quantum computing in simple terms')">
+            Explain quantum computing
+          </button>
+          <button class="suggestion-chip" (click)="setSuggestion('Write a Python function to sort a list')">
+            Write Python code
+          </button>
+          <button class="suggestion-chip" (click)="setSuggestion('What are the latest AI developments?')">
+            Latest AI news
+          </button>
+        </div>
       </div>
-      <div class="message-content">
-        <div class="loading-indicator">
-          <div class="loading-dots">
-            <span></span>
-            <span></span>
-            <span></span>
+
+      <!-- Chat Messages -->
+      <div class="message-group" *ngFor="let message of messages" [class]="'message-' + message.type">
+        <div class="message-wrapper">
+          <div class="message-avatar" [class]="'avatar-' + message.type">
+            <svg *ngIf="message.type === 'user'" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <svg *ngIf="message.type === 'assistant'" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <svg *ngIf="message.type === 'system'" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
           </div>
-          Processing your query...
+          
+          <div class="message-content">
+            <div class="message-header">
+              <span class="sender-name">{{ getSenderName(message.type) }}</span>
+              <span class="message-time">{{ message.timestamp | date:'HH:mm' }}</span>
+            </div>
+            
+            <div class="message-body">
+              <div class="message-text" [innerHTML]="message.content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="message-group message-loading" *ngIf="isLoading">
+        <div class="message-wrapper">
+          <div class="message-avatar avatar-system">
+            <div class="loading-spinner">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="animate-spin">
+                <path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/>
+              </svg>
+            </div>
+          </div>
+          
+          <div class="message-content">
+            <div class="message-header">
+              <span class="sender-name">Hivemind</span>
+              <span class="message-time">{{ now | date:'HH:mm' }}</span>
+            </div>
+            
+            <div class="message-body">
+              <div class="thinking-indicator">
+                <div class="thinking-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span class="thinking-text">Consulting {{ activeAgents.length }} AI models...</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <div class="chat-input">
-    <div class="input-container">
-      <textarea 
-        [(ngModel)]="currentMessage"
-        (keydown)="onKeyDown($event)"
-        placeholder="Ask the Hivemind anything..."
-        class="message-input"
-        rows="1"
-        #messageInput
-      ></textarea>
-      <button 
-        (click)="sendMessage()" 
-        [disabled]="!canSendMessage()"
-        class="send-button"
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor" class="send-icon">
-          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-        </svg>
-      </button>
+
+  <!-- Input Area -->
+  <footer class="chat-input">
+    <div class="input-wrapper">
+      <div class="input-container">
+        <textarea 
+          [(ngModel)]="currentMessage"
+          (keydown)="onKeyDown($event)"
+          (input)="autoResize($event)"
+          placeholder="Ask the Hivemind anything..."
+          class="message-input form-control"
+          rows="1"
+          #messageInput
+        ></textarea>
+        
+        <div class="input-actions">
+          <button 
+            (click)="sendMessage()" 
+            [disabled]="!canSendMessage()"
+            class="btn btn-primary send-button"
+            title="Send message (Ctrl+Enter)"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" class="send-icon">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+            <span class="sr-only">Send</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="input-footer">
+        <span class="input-hint">
+          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send
+        </span>
+        <div class="model-indicators">
+          <span class="model-count">{{ activeAgents.length }} models ready</span>
+        </div>
+      </div>
     </div>
-  </div>
+  </footer>
 </div>

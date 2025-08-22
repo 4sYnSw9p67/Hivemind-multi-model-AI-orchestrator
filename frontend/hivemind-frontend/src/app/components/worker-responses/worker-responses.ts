@@ -43,14 +43,14 @@ export class WorkerResponsesComponent {
   getAverageResponseTime(): number {
     const responsesWithTime = this.responses.filter(r => r.processingTime);
     if (responsesWithTime.length === 0) return 0;
-    
+
     const total = responsesWithTime.reduce((sum, r) => sum + (r.processingTime || 0), 0);
     return Math.round(total / responsesWithTime.length);
   }
 
   getBestModel(): string {
     if (this.responses.length === 0) return 'N/A';
-    
+
     const modelStats = this.responses.reduce((stats, response) => {
       if (!stats[response.model]) {
         stats[response.model] = { good: 0, bad: 0, total: 0 };
@@ -72,7 +72,7 @@ export class WorkerResponsesComponent {
       const successRate = (stats.total - this.responses.filter(r => r.model === model && r.error).length) / stats.total;
       const ratingScore = stats.good / Math.max(1, stats.good + stats.bad);
       const combinedScore = (successRate * 0.7) + (ratingScore * 0.3);
-      
+
       if (combinedScore > bestScore) {
         bestScore = combinedScore;
         bestModel = model;
@@ -80,5 +80,28 @@ export class WorkerResponsesComponent {
     });
 
     return bestModel;
+  }
+
+  getModelDisplayName(model: string): string {
+    const modelNames: Record<string, string> = {
+      'gpt-4': 'GPT-4',
+      'claude-3-sonnet': 'Claude 3 Sonnet',
+      'llama-3.1': 'LLaMA 3.1',
+      'deepseek-coder': 'DeepSeek Coder'
+    };
+    return modelNames[model] || model;
+  }
+
+  formatResponse(output: string): string {
+    if (!output) return '';
+
+    // Basic HTML formatting - convert newlines to <br> and handle basic markdown-like formatting
+    let formatted = output
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code>$1</code>');
+
+    return formatted;
   }
 }

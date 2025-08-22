@@ -20,8 +20,8 @@ export interface ChatMessage {
 })
 export class MainChatComponent implements AfterViewChecked {
   @Input() activeAgents: Agent[] = [];
-  @Output() messageProcessed = new EventEmitter<{query: string, results: any[]}>();
-  
+  @Output() messageProcessed = new EventEmitter<{ query: string, results: any[] }>();
+
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
 
   messages: ChatMessage[] = [
@@ -33,12 +33,12 @@ export class MainChatComponent implements AfterViewChecked {
       type: 'system'
     }
   ];
-  
+
   currentMessage = '';
   isLoading = false;
   now = new Date();
 
-  constructor(private hivemindService: HivemindService) {}
+  constructor(private hivemindService: HivemindService) { }
 
   ngAfterViewChecked() {
     this.scrollToBottom();
@@ -46,7 +46,7 @@ export class MainChatComponent implements AfterViewChecked {
 
   sendMessage() {
     if (!this.canSendMessage()) return;
-    
+
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       sender: 'You',
@@ -54,25 +54,25 @@ export class MainChatComponent implements AfterViewChecked {
       timestamp: new Date(),
       type: 'user'
     };
-    
+
     this.messages.push(userMessage);
     const query = this.currentMessage;
     this.currentMessage = '';
     this.isLoading = true;
     this.now = new Date();
-    
+
     this.hivemindService.sendQuery(query).subscribe({
       next: (response) => {
         this.isLoading = false;
-        
+
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
           sender: 'Hivemind',
-          content: this.formatResponse(response.results),
+          content: this.formatResponse(response.results, response.masterEvaluation),
           timestamp: new Date(),
           type: 'assistant'
         };
-        
+
         this.messages.push(assistantMessage);
         this.messageProcessed.emit({ query, results: response.results });
       },
@@ -101,25 +101,63 @@ export class MainChatComponent implements AfterViewChecked {
     return !!(this.currentMessage?.trim() && !this.isLoading);
   }
 
-  private formatResponse(results: any[]): string {
+  private formatResponse(results: any[], masterEvaluation?: any): string {
     if (!results || results.length === 0) {
       return 'No response received from the models.';
     }
-    
+
     let html = '<div class="response-summary">';
-    html += `<strong>Consulted ${results.length} model(s):</strong><br>`;
-    
+
+    // Master AI Evaluation Section
+    if (masterEvaluation) {
+      html += `<div class="master-evaluation">`;
+      html += `<h4>🏆 Best Response: ${masterEvaluation.bestResponse}</h4>`;
+      html += `<p class="evaluation-reasoning">${masterEvaluation.reasoning}</p>`;
+      html += `</div>`;
+    }
+
+    html += `<div class="consultation-header">`;
+    html += `<strong>Consulted ${results.length} AI model(s):</strong>`;
+    html += `</div>`;
+
     results.forEach((result, index) => {
-      html += `<div class="model-response">`;
-      html += `<strong>${result.model}:</strong> `;
+      const isBest = masterEvaluation?.bestResponse === result.model;
+      html += `<div class="model-response ${isBest ? 'best-response' : ''}">`;
+
+      if (isBest) {
+        html += `<div class="best-badge">🏆 Best Response</div>`;
+      }
+
+      html += `<div class="model-header">`;
+      html += `<strong>${result.model}</strong>`;
+      if (result.processingTime) {
+        html += ` <span class="processing-time">(${result.processingTime}ms)</span>`;
+      }
+      html += `</div>`;
+
       if (result.error) {
-        html += `<span class="error">Error: ${result.error}</span>`;
+        html += `<div class="error">⚠️ Error: ${result.error}</div>`;
       } else {
-        html += `<span class="response">${result.output}</span>`;
+        html += `<div class="response-content">${result.output}</div>`;
+        if (result.confidence) {
+          html += `<div class="confidence">Confidence: ${result.confidence}%</div>`;
+        }
       }
       html += `</div>`;
     });
-    
+
+    // Rankings
+    if (masterEvaluation?.ranking) {
+      html += `<div class="rankings">`;
+      html += `<h5>📊 Performance Ranking:</h5>`;
+      html += `<ol class="ranking-list">`;
+      masterEvaluation.ranking.forEach((rank: any) => {
+        html += `<li>${rank.model} (Score: ${rank.score})</li>`;
+      });
+      html += `</ol>`;
+      html += `</div>`;
+    }
+
     html += '</div>';
     return html;
   }
@@ -129,5 +167,24 @@ export class MainChatComponent implements AfterViewChecked {
       const element = this.messagesContainer.nativeElement;
       element.scrollTop = element.scrollHeight;
     }
+  }
+
+  setSuggestion(suggestion: string) {
+    this.currentMessage = suggestion;
+  }
+
+  getSenderName(type: string): string {
+    const senderNames: Record<string, string> = {
+      'user': 'You',
+      'assistant': 'Hivemind',
+      'system': 'System'
+    };
+    return senderNames[type] || 'Unknown';
+  }
+
+  autoResize(event: Event) {
+    const target = event.target as HTMLTextAreaElement;
+    target.style.height = 'auto';
+    target.style.height = target.scrollHeight + 'px';
   }
 }

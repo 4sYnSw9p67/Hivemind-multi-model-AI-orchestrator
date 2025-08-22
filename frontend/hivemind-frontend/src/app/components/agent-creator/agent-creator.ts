@@ -21,7 +21,7 @@ export class AgentCreatorComponent {
   @Output() agentRemoved = new EventEmitter<string>();
 
   agents: Agent[] = [];
-  
+
   newAgent = {
     name: '',
     model: '',
@@ -37,10 +37,10 @@ export class AgentCreatorComponent {
         specialization: this.newAgent.specialization,
         isActive: true
       };
-      
+
       this.agents.push(agent);
       this.agentCreated.emit(agent);
-      
+
       // Reset form
       this.newAgent = {
         name: '',
@@ -56,8 +56,22 @@ export class AgentCreatorComponent {
   }
 
   canCreateAgent(): boolean {
-    return !!(this.newAgent.name?.trim() && 
-              this.newAgent.model?.trim() && 
-              this.newAgent.specialization?.trim());
+    return !!(this.newAgent.name?.trim() &&
+      this.newAgent.model?.trim() &&
+      this.newAgent.specialization?.trim());
+  }
+
+  trackAgent(index: number, agent: Agent): string {
+    return agent.id;
+  }
+
+  getModelDisplayName(model: string): string {
+    const modelNames: Record<string, string> = {
+      'gpt-4': 'GPT-4',
+      'claude-3-sonnet': 'Claude 3 Sonnet',
+      'llama-3.1': 'LLaMA 3.1',
+      'deepseek-coder': 'DeepSeek Coder'
+    };
+    return modelNames[model] || model;
   }
 }
