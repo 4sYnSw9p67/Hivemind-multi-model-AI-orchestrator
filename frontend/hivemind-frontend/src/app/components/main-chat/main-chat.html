@@ -1,0 +1,58 @@
+<div class="main-chat">
+  <div class="header">
+    <h2>Hivemind Chat</h2>
+    <div class="status">
+      <span class="status-indicator" [class.active]="activeAgents.length > 0"></span>
+      {{ activeAgents.length }} agent(s) active
+    </div>
+  </div>
+  
+  <div class="chat-messages" #messagesContainer>
+    <div class="message" *ngFor="let message of messages" [class]="message.type">
+      <div class="message-header">
+        <span class="sender">{{ message.sender }}</span>
+        <span class="timestamp">{{ message.timestamp | date:'HH:mm:ss' }}</span>
+      </div>
+      <div class="message-content" [innerHTML]="message.content"></div>
+    </div>
+    
+    <div *ngIf="isLoading" class="message system">
+      <div class="message-header">
+        <span class="sender">System</span>
+        <span class="timestamp">{{ now | date:'HH:mm:ss' }}</span>
+      </div>
+      <div class="message-content">
+        <div class="loading-indicator">
+          <div class="loading-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          Processing your query...
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="chat-input">
+    <div class="input-container">
+      <textarea 
+        [(ngModel)]="currentMessage"
+        (keydown)="onKeyDown($event)"
+        placeholder="Ask the Hivemind anything..."
+        class="message-input"
+        rows="1"
+        #messageInput
+      ></textarea>
+      <button 
+        (click)="sendMessage()" 
+        [disabled]="!canSendMessage()"
+        class="send-button"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" class="send-icon">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>

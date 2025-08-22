@@ -1,0 +1,85 @@
+<div class="worker-responses">
+  <div class="header">
+    <h2>AI Responses</h2>
+    <div class="response-count">
+      {{ responses.length }} response(s)
+    </div>
+  </div>
+  
+  <div class="responses-container">
+    <div *ngIf="responses.length === 0" class="empty-state">
+      <div class="empty-icon">🤖</div>
+      <p>AI responses will appear here when you ask questions</p>
+    </div>
+    
+    <div class="response-card" *ngFor="let response of responses; trackBy: trackByResponseId">
+      <div class="response-header">
+        <div class="model-info">
+          <span class="model-name">{{ response.model }}</span>
+          <span class="response-time">{{ response.timestamp | date:'HH:mm:ss' }}</span>
+        </div>
+        <div class="response-actions">
+          <button 
+            (click)="rateResponse(response, 'good')"
+            [class.active]="response.rating === 'good'"
+            class="rating-button good"
+            title="Good response"
+          >
+            👍
+          </button>
+          <button 
+            (click)="rateResponse(response, 'bad')"
+            [class.active]="response.rating === 'bad'"
+            class="rating-button bad"
+            title="Poor response"
+          >
+            👎
+          </button>
+        </div>
+      </div>
+      
+      <div class="query-context" *ngIf="response.query">
+        <strong>Query:</strong> {{ response.query }}
+      </div>
+      
+      <div class="response-content">
+        <div *ngIf="response.error" class="error-content">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{{ response.error }}</span>
+        </div>
+        <div *ngIf="!response.error" class="success-content">
+          {{ response.output }}
+        </div>
+      </div>
+      
+      <div class="response-meta">
+        <span class="processing-time" *ngIf="response.processingTime">
+          {{ response.processingTime }}ms
+        </span>
+        <span class="confidence" *ngIf="response.confidence">
+          Confidence: {{ response.confidence }}%
+        </span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="analytics" *ngIf="responses.length > 0">
+    <div class="analytics-header">
+      <h3>Analytics</h3>
+    </div>
+    <div class="analytics-grid">
+      <div class="stat-card">
+        <div class="stat-value">{{ getSuccessRate() }}%</div>
+        <div class="stat-label">Success Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ getAverageResponseTime() }}ms</div>
+        <div class="stat-label">Avg Response Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ getBestModel() }}</div>
+        <div class="stat-label">Best Model</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,7 +1,25 @@
-<h1>Hivemind AI Orchestrator</h1>
-
-<nav>
-  <a routerLink="/hivemind" routerLinkActive="active">Hivemind</a>
-</nav>
-
-<router-outlet></router-outlet>
+<div class="app-container">
+  <header class="app-header">
+    <h1>Hivemind AI Orchestrator</h1>
+  </header>
+  
+  <div class="main-layout">
+    <div class="left-panel">
+      <app-agent-creator 
+        (agentCreated)="onAgentCreated($event)"
+        (agentRemoved)="onAgentRemoved($event)">
+      </app-agent-creator>
+    </div>
+    <div class="center-panel">
+      <app-main-chat 
+        [activeAgents]="activeAgents"
+        (messageProcessed)="onMessageProcessed($event)">
+      </app-main-chat>
+    </div>
+    <div class="right-panel">
+      <app-worker-responses 
+        [responses]="workerResponses">
+      </app-worker-responses>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,65 @@
+<div class="agent-creator">
+  <div class="header">
+    <h2>Create Agents</h2>
+  </div>
+  
+  <div class="content">
+    <div class="form-group">
+      <label for="agent-name">Agent Name</label>
+      <input 
+        id="agent-name"
+        type="text" 
+        [(ngModel)]="newAgent.name" 
+        placeholder="e.g., Code Helper, Research Assistant"
+        class="input"
+      />
+    </div>
+    
+    <div class="form-group">
+      <label for="agent-model">AI Model</label>
+      <select id="agent-model" [(ngModel)]="newAgent.model" class="select">
+        <option value="">Select Model</option>
+        <option value="gpt-4">GPT-4</option>
+        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+        <option value="llama-3.1">LLaMA 3.1</option>
+        <option value="deepseek-coder">DeepSeek Coder</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="agent-specialization">Specialization</label>
+      <textarea 
+        id="agent-specialization"
+        [(ngModel)]="newAgent.specialization"
+        placeholder="Describe what this agent specializes in..."
+        class="textarea"
+        rows="3"
+      ></textarea>
+    </div>
+    
+    <button 
+      (click)="createAgent()" 
+      [disabled]="!canCreateAgent()"
+      class="button button-primary"
+    >
+      Create Agent
+    </button>
+  </div>
+  
+  <div class="agents-list">
+    <h3>Active Agents</h3>
+    <div class="agent-card" *ngFor="let agent of agents">
+      <div class="agent-info">
+        <div class="agent-name">{{ agent.name }}</div>
+        <div class="agent-model">{{ agent.model }}</div>
+        <div class="agent-spec">{{ agent.specialization }}</div>
+      </div>
+      <button 
+        (click)="removeAgent(agent.id)" 
+        class="button button-danger button-small"
+      >
+        Remove
+      </button>
+    </div>
+  </div>
+</div>
