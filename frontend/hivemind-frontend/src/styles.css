@@ -1,5 +1,27 @@
-/* Global styles for Hivemind */
+/* Global font import must come before other @imports for CSS validity */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Tailwind base */
+@import "tailwindcss";
+
+/* Global styles for Hivemind */
+
+:root {
+  --brand: #6b5cff;
+  --primary: #6b5cff;
+  --primary-foreground: #ffffff;
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --muted: #64748b;
+  --border: #e5e7eb;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1020;
+  --surface: #111426;
+  --muted: #94a3b8;
+  --border: #1f2937;
+}
 
 * {
   box-sizing: border-box;
@@ -84,3 +106,6 @@ select:focus-visible {
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
