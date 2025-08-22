@@ -2,11 +2,11 @@
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 100px); /* Account for fixed input */
-  max-height: calc(100vh - 100px);
+  height: 100%;
   background: var(--bg-primary);
   font-family: var(--font-family-sans);
   overflow: hidden;
+  position: relative;
 }
 
 /* Chat Header */
@@ -72,6 +72,7 @@
   background: var(--bg-primary);
   min-height: 0;
   max-height: calc(100vh - 140px); /* Account for header + input */
+  padding-bottom: 40px; /* Space for input so it doesn't get pushed */
 }
 
 .messages-content {
@@ -485,13 +486,13 @@
   font-style: italic;
 }
 
-/* Chat Input - FIXED POSITION */
+/* Chat Input - Only in Middle Panel */
 .chat-input {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 10;
   border-top: 1px solid var(--border-light);
   background: var(--bg-primary);
   padding: var(--space-4);
