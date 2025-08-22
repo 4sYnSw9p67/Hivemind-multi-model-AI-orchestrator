@@ -473,3 +473,49 @@ html, body {
   height: 100%; 
   font-family: var(--font-family-sans) !important;
 }
+
+/* Global Dialog Theme Support */
+.settings-dialog-panel .mat-mdc-dialog-container {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-family-sans) !important;
+}
+
+/* Ensure CDK overlay backdrop respects theme */
+.cdk-overlay-backdrop {
+  background: rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme="dark"] .cdk-overlay-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Global Material overrides for theme consistency */
+.mat-mdc-dialog-container {
+  --mdc-dialog-container-color: var(--bg-primary);
+  --mdc-dialog-supporting-text-color: var(--text-primary);
+  --mdc-dialog-subhead-color: var(--text-primary);
+}
+
+/* Ensure all Material components respect our theme */
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-label-text-color: var(--text-secondary);
+  --mdc-outlined-text-field-input-text-color: var(--text-primary);
+  --mdc-outlined-text-field-outline-color: var(--border-light);
+  --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
+  --mdc-outlined-text-field-focus-outline-color: var(--brand-primary);
+}
+
+.mat-mdc-tab-group {
+  --mdc-tab-indicator-active-indicator-color: var(--brand-primary);
+}
+
+.mat-mdc-button {
+  --mdc-text-button-label-text-color: var(--text-secondary);
+  --mdc-text-button-hover-state-layer-color: var(--bg-tertiary);
+}
+
+.mat-mdc-raised-button.mat-primary {
+  --mdc-filled-button-container-color: var(--brand-primary);
+  --mdc-filled-button-label-text-color: var(--text-inverse);
+}

@@ -58,7 +58,8 @@ export class App implements OnInit {
       width: '600px',
       maxWidth: '90vw',
       disableClose: false,
-      autoFocus: true
+      autoFocus: true,
+      panelClass: 'settings-dialog-panel'
     });
 
     dialogRef.afterClosed().subscribe(result => {

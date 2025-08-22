@@ -9,22 +9,23 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
-    selector: 'app-settings-dialog',
-    standalone: true,
-    imports: [
-        CommonModule,
-        FormsModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatInputModule,
-        MatFormFieldModule,
-        MatTabsModule,
-        MatIconModule,
-        MatSlideToggleModule
-    ],
-    template: `
+  selector: 'app-settings-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatTabsModule,
+    MatIconModule,
+    MatSlideToggleModule
+  ],
+  template: `
     <div class="settings-dialog">
       <div class="dialog-header">
         <h2 mat-dialog-title>Settings</h2>
@@ -172,42 +173,49 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
       </mat-dialog-actions>
     </div>
   `,
-    styles: [`
+  styles: [`
+    /* Settings Dialog - Full Theme Support */
     .settings-dialog {
       width: 600px;
       max-width: 90vw;
+      font-family: var(--font-family-sans);
     }
 
     .dialog-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1rem 1.5rem 0 1.5rem;
+      padding: var(--space-4) var(--space-6) 0 var(--space-6);
+      background: var(--bg-primary);
     }
 
     .dialog-header h2 {
       margin: 0;
       font-size: 1.5rem;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
     .dialog-content {
-      padding: 1.5rem;
+      padding: var(--space-6);
       min-height: 400px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
     }
 
     .tab-content {
-      padding: 1.5rem 0;
+      padding: var(--space-6) 0;
     }
 
     .section-header {
-      margin-bottom: 2rem;
+      margin-bottom: var(--space-8);
     }
 
     .section-header h3 {
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 var(--space-2) 0;
       font-size: 1.25rem;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
     .section-description {
@@ -220,14 +228,14 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
     .form-grid {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      gap: var(--space-6);
+      margin-bottom: var(--space-8);
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: var(--space-2);
     }
 
     .full-width {
@@ -237,7 +245,7 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
     .field-help {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: var(--space-1);
       font-size: 0.75rem;
     }
 
@@ -246,11 +254,13 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
       text-decoration: none;
       display: flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: var(--space-1);
+      transition: all 0.15s ease-in-out;
     }
 
     .field-help a:hover {
       text-decoration: underline;
+      opacity: 0.8;
     }
 
     .field-help mat-icon {
@@ -262,8 +272,8 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
     .api-status {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      padding: 1rem;
+      gap: var(--space-3);
+      padding: var(--space-4);
       background: var(--bg-tertiary);
       border-radius: var(--radius-md);
       border: 1px solid var(--border-light);
@@ -272,9 +282,10 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
     .status-item {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: var(--space-3);
       font-size: 0.875rem;
       color: var(--text-secondary);
+      transition: color 0.15s ease-in-out;
     }
 
     .status-item.configured {
@@ -290,36 +301,44 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
     .preferences-section {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      gap: var(--space-6);
     }
 
     .preference-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1rem;
+      padding: var(--space-4);
       border: 1px solid var(--border-light);
       border-radius: var(--radius-md);
       background: var(--bg-primary);
+      transition: all 0.15s ease-in-out;
+    }
+
+    .preference-item:hover {
+      border-color: var(--border-medium);
+      box-shadow: var(--shadow-sm);
     }
 
     .preference-info h4 {
-      margin: 0 0 0.25rem 0;
+      margin: 0 0 var(--space-1) 0;
       font-size: 1rem;
       font-weight: 500;
+      color: var(--text-primary);
     }
 
     .preference-info p {
       margin: 0;
       font-size: 0.875rem;
       color: var(--text-secondary);
+      line-height: 1.4;
     }
 
     .dialog-actions {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 1rem 1.5rem;
+      gap: var(--space-3);
+      padding: var(--space-4) var(--space-6);
       border-top: 1px solid var(--border-light);
       background: var(--bg-secondary);
     }
@@ -329,63 +348,210 @@ import { ApiKeysService, ApiKeys } from '../../services/api-keys.service';
     }
 
     .clear-button {
-      color: var(--error);
+      color: var(--error) !important;
     }
 
     .clear-button:hover {
-      background: var(--error-light);
+      background: var(--error-light) !important;
     }
 
+    /* Material Component Theme Overrides */
+    ::ng-deep .mat-mdc-dialog-container {
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
+      border-radius: var(--radius-lg) !important;
+      box-shadow: var(--shadow-xl) !important;
+    }
+
+    ::ng-deep .mat-mdc-dialog-title {
+      color: var(--text-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-dialog-content {
+      color: var(--text-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-dialog-actions {
+      background: var(--bg-secondary) !important;
+    }
+
+    /* Tab Group Styling */
     ::ng-deep .mat-mdc-tab-group {
       --mdc-tab-indicator-active-indicator-color: var(--brand-primary);
+      background: var(--bg-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-tab-header {
+      background: var(--bg-primary) !important;
+      border-bottom: 1px solid var(--border-light) !important;
     }
 
     ::ng-deep .mat-mdc-tab .mdc-tab__text-label {
-      color: var(--text-secondary);
+      color: var(--text-secondary) !important;
+      font-weight: 500 !important;
     }
 
     ::ng-deep .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
-      color: var(--brand-primary);
+      color: var(--brand-primary) !important;
+      font-weight: 600 !important;
+    }
+
+    ::ng-deep .mat-mdc-tab:hover .mdc-tab__text-label {
+      color: var(--text-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-tab-body-wrapper {
+      background: var(--bg-primary) !important;
+    }
+
+    /* Form Field Styling */
+    ::ng-deep .mat-mdc-form-field {
+      --mdc-filled-text-field-container-color: var(--bg-primary);
+      --mdc-filled-text-field-label-text-color: var(--text-secondary);
+      --mdc-filled-text-field-input-text-color: var(--text-primary);
+      --mdc-outlined-text-field-outline-color: var(--border-light);
+      --mdc-outlined-text-field-focus-outline-color: var(--brand-primary);
+      --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
+      --mdc-outlined-text-field-label-text-color: var(--text-secondary);
+      --mdc-outlined-text-field-input-text-color: var(--text-primary);
+    }
+
+    ::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-label {
+      color: var(--brand-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-input-element {
+      color: var(--text-primary) !important;
+      caret-color: var(--brand-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-input-element::placeholder {
+      color: var(--text-tertiary) !important;
+    }
+
+    /* Button Styling */
+    ::ng-deep .mat-mdc-button {
+      color: var(--text-secondary) !important;
+      font-weight: 500 !important;
+    }
+
+    ::ng-deep .mat-mdc-button:hover {
+      background: var(--bg-tertiary) !important;
+      color: var(--text-primary) !important;
+    }
+
+    ::ng-deep .mat-mdc-raised-button.mat-primary {
+      background: var(--brand-primary) !important;
+      color: var(--text-inverse) !important;
+      box-shadow: var(--shadow-md) !important;
+    }
+
+    ::ng-deep .mat-mdc-raised-button.mat-primary:hover {
+      background: var(--brand-primary-hover) !important;
+      box-shadow: var(--shadow-lg) !important;
+    }
+
+    ::ng-deep .mat-mdc-icon-button {
+      color: var(--text-secondary) !important;
+    }
+
+    ::ng-deep .mat-mdc-icon-button:hover {
+      background: var(--bg-tertiary) !important;
+      color: var(--text-primary) !important;
+    }
+
+    /* Slide Toggle Styling */
+    ::ng-deep .mat-mdc-slide-toggle {
+      --mdc-switch-selected-track-color: var(--brand-primary);
+      --mdc-switch-selected-handle-color: var(--text-inverse);
+      --mdc-switch-selected-hover-track-color: var(--brand-primary-hover);
+      --mdc-switch-unselected-track-color: var(--neutral-300);
+      --mdc-switch-unselected-handle-color: var(--neutral-500);
+      --mdc-switch-unselected-hover-track-color: var(--neutral-400);
+    }
+
+    ::ng-deep .mat-mdc-slide-toggle .mdc-switch {
+      --mdc-switch-track-height: 20px;
+      --mdc-switch-track-width: 36px;
+    }
+
+    ::ng-deep .mat-mdc-slide-toggle.mat-checked .mdc-switch__track {
+      background-color: var(--brand-primary) !important;
+      opacity: 1 !important;
+    }
+
+    ::ng-deep .mat-mdc-slide-toggle.mat-checked .mdc-switch__handle {
+      background-color: var(--text-inverse) !important;
+    }
+
+    ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__track {
+      background-color: var(--neutral-300) !important;
+      opacity: 1 !important;
+    }
+
+    ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__handle {
+      background-color: var(--neutral-500) !important;
+    }
+
+    /* Icon Styling */
+    ::ng-deep mat-icon {
+      color: inherit !important;
+    }
+
+    /* Dark mode specific overrides */
+    :root[data-theme="dark"] ::ng-deep .mat-mdc-form-field {
+      --mdc-outlined-text-field-outline-color: var(--border-light);
+      --mdc-outlined-text-field-focus-outline-color: var(--brand-primary);
+      --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
+    }
+
+    :root[data-theme="dark"] ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__track {
+      background-color: var(--neutral-600) !important;
+    }
+
+    :root[data-theme="dark"] ::ng-deep .mat-mdc-slide-toggle:not(.mat-checked) .mdc-switch__handle {
+      background-color: var(--neutral-400) !important;
     }
   `]
 })
 export class SettingsDialogComponent {
-    apiKeys: ApiKeys = {
-        openai: '',
-        anthropic: '',
-        gemini: ''
+  apiKeys: ApiKeys = {
+    openai: '',
+    anthropic: '',
+    gemini: ''
+  };
+
+  preferences = {
+    enableMasterAI: true,
+    autoCreateAgents: false
+  };
+
+  constructor(
+    private dialogRef: MatDialogRef<SettingsDialogComponent>,
+    private apiKeysService: ApiKeysService,
+    private themeService: ThemeService,
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {
+    this.apiKeys = { ...this.apiKeysService.getApiKeys() };
+  }
+
+  save() {
+    this.apiKeysService.updateApiKeys(this.apiKeys);
+    this.dialogRef.close({
+      apiKeys: this.apiKeys,
+      preferences: this.preferences
+    });
+  }
+
+  clearKeys() {
+    this.apiKeys = {
+      openai: '',
+      anthropic: '',
+      gemini: ''
     };
+  }
 
-    preferences = {
-        enableMasterAI: true,
-        autoCreateAgents: false
-    };
-
-    constructor(
-        private dialogRef: MatDialogRef<SettingsDialogComponent>,
-        private apiKeysService: ApiKeysService,
-        @Inject(MAT_DIALOG_DATA) public data: any
-    ) {
-        this.apiKeys = { ...this.apiKeysService.getApiKeys() };
-    }
-
-    save() {
-        this.apiKeysService.updateApiKeys(this.apiKeys);
-        this.dialogRef.close({
-            apiKeys: this.apiKeys,
-            preferences: this.preferences
-        });
-    }
-
-    clearKeys() {
-        this.apiKeys = {
-            openai: '',
-            anthropic: '',
-            gemini: ''
-        };
-    }
-
-    close() {
-        this.dialogRef.close();
-    }
+  close() {
+    this.dialogRef.close();
+  }
 }
