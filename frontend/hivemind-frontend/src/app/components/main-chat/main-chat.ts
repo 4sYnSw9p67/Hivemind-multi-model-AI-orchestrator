@@ -142,13 +142,15 @@ export class MainChatComponent implements AfterViewChecked {
       const isBest = masterEvaluation?.bestResponseIndex === index;
       const ranking = masterEvaluation?.rankings.find(r => r.index === index);
 
-      html += `<div class="model-response ${isBest ? 'best-response' : ''}">`;
+      // Create individual worker container with visual separation
+      html += `<div class="worker-container ${isBest ? 'best-response' : ''}">`;
 
       if (isBest) {
         html += `<div class="best-badge">🏆 Best Response</div>`;
       }
 
-      html += `<div class="model-header">`;
+      // Worker header
+      html += `<div class="worker-header">`;
       html += `<strong>${result.model}</strong>`;
       if (result.workerParams) {
         html += ` <span class="worker-params">(T:${result.workerParams.temperature.toFixed(2)}, K:${result.workerParams.top_k}, P:${result.workerParams.top_p.toFixed(2)})</span>`;
@@ -159,23 +161,26 @@ export class MainChatComponent implements AfterViewChecked {
       html += `</div>`;
 
       if (result.error) {
-        html += `<div class="error">⚠️ Error: ${result.error}</div>`;
+        html += `<div class="worker-error">⚠️ Error: ${result.error}</div>`;
       } else {
         // Clean up the response output (remove <think> tags if present)
         let cleanOutput = result.output || '';
         cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-        // Store raw content for processing in the middle chat panel
-        // Escape HTML entities to prevent XSS but preserve for markdown processing
+        // Worker response content container - this will be processed for markdown
+        html += `<div class="worker-response-content" data-raw-content="${encodeURIComponent(cleanOutput)}">`;
+        // Temporary escaped content - will be replaced with rendered markdown
         const escapedOutput = cleanOutput
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
-        html += `<div class="response-content" data-raw-content="${encodeURIComponent(cleanOutput)}">${escapedOutput}</div>`;
+        html += escapedOutput;
+        html += `</div>`;
 
-        html += `<div class="response-metadata">`;
+        // Worker metadata
+        html += `<div class="worker-metadata">`;
         if (result.confidence) {
           html += `<span class="confidence">Confidence: ${(result.confidence * 100).toFixed(1)}%</span>`;
         }
@@ -187,7 +192,7 @@ export class MainChatComponent implements AfterViewChecked {
         }
         html += `</div>`;
       }
-      html += `</div>`;
+      html += `</div>`; // Close worker-container
     });
 
     // Rankings Summary
@@ -237,12 +242,12 @@ export class MainChatComponent implements AfterViewChecked {
 
   // Process content specifically for middle chat panel display
   processMiddleChatContent(htmlContent: string): string {
-    // Look for response-content divs with raw content data
-    const responseContentPattern = /<div class="response-content"[^>]*data-raw-content="([^"]*)"[^>]*>[\s\S]*?<\/div>/g;
+    // Look for worker-response-content divs with raw content data
+    const workerResponsePattern = /<div class="worker-response-content"[^>]*data-raw-content="([^"]*)"[^>]*>[\s\S]*?<\/div>/g;
     let processedHtml = htmlContent;
 
     let match;
-    while ((match = responseContentPattern.exec(htmlContent)) !== null) {
+    while ((match = workerResponsePattern.exec(htmlContent)) !== null) {
       const originalDiv = match[0];
       const rawContentEncoded = match[1];
 
@@ -256,7 +261,7 @@ export class MainChatComponent implements AfterViewChecked {
         ? marked.parse(processedMarkdown, { async: false }) as string
         : marked(processedMarkdown) as string;
 
-      const newDiv = `<div class="response-content markdown-content">${newMarkdownHtml}</div>`;
+      const newDiv = `<div class="worker-response-content markdown-content">${newMarkdownHtml}</div>`;
       processedHtml = processedHtml.replace(originalDiv, newDiv);
     }
 

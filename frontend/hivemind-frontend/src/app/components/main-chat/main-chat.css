@@ -870,6 +870,82 @@
   border-color: var(--neutral-700);
 }
 
+/* Individual Worker Container Styles */
+.worker-container {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  position: relative;
+}
+
+.worker-container.best-response {
+  border-color: var(--brand-primary);
+  background: rgba(var(--brand-primary-rgb), 0.05);
+}
+
+.worker-header {
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.worker-header strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.worker-response-content {
+  margin: var(--space-3) 0;
+  line-height: 1.6;
+}
+
+.worker-response-content.markdown-content {
+  /* Inherit all the existing markdown styles */
+}
+
+.worker-metadata {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-light);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.worker-error {
+  color: var(--error);
+  background: var(--error-light);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  margin: var(--space-2) 0;
+}
+
+/* Dark theme adjustments for worker containers */
+:root[data-theme="dark"] .worker-container {
+  background: var(--neutral-800);
+  border-color: var(--neutral-700);
+}
+
+:root[data-theme="dark"] .worker-container.best-response {
+  background: rgba(var(--brand-primary-rgb), 0.1);
+  border-color: var(--brand-primary);
+}
+
+:root[data-theme="dark"] .worker-header {
+  border-bottom-color: var(--neutral-700);
+}
+
+:root[data-theme="dark"] .worker-metadata {
+  border-top-color: var(--neutral-700);
+}
+
+:root[data-theme="dark"] .worker-error {
+  background: rgba(var(--error-rgb), 0.1);
+}
+
 /* Chat message specific markdown containment */
 .message-text .markdown-content {
   max-width: 100%;
