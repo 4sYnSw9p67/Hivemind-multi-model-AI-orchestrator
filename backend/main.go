@@ -36,9 +36,14 @@ type WorkerParams struct {
 }
 
 type QueryRequest struct {
-	Query    string   `json:"query"`
-	Models   []string `json:"models,omitempty"`
-	AgentIds []string `json:"agentIds,omitempty"`
+	Query  string  `json:"query"`
+	Agents []Agent `json:"agents,omitempty"`
+}
+
+type Agent struct {
+	Name           string       `json:"name"`
+	Specialization string       `json:"specialization"`
+	WorkerParams   WorkerParams `json:"workerParams"`
 }
 
 type QueryResponse struct {
@@ -418,31 +423,55 @@ func performSimpleEvaluation(responses []AIResult, evaluationTime int64) *Master
 	}
 }
 
-func processQuery(ctx context.Context, query string, models []string) ([]AIResult, *MasterEvaluation) {
+func processQuery(ctx context.Context, query string, agents []Agent) ([]AIResult, *MasterEvaluation) {
 	// Initialize random seed
 	rand.Seed(time.Now().UnixNano())
 
-	// Create Qwen workers with randomized parameters
-	var wg sync.WaitGroup
-	results := make([]AIResult, NumWorkers)
+	// If no agents provided, use single master response
+	if len(agents) == 0 {
+		masterParams := WorkerParams{
+			Temperature: 0.7,
+			TopK:        40,
+			TopP:        0.8,
+			WorkerID:    "Master",
+		}
 
-	for i := 0; i < NumWorkers; i++ {
+		result := callQwenWorker(ctx, query, masterParams)
+		result.Model = "Hivemind Master"
+
+		return []AIResult{result}, nil
+	}
+
+	// Use provided agents as workers
+	var wg sync.WaitGroup
+	results := make([]AIResult, len(agents))
+
+	for i, agent := range agents {
 		wg.Add(1)
-		go func(index int) {
+		go func(index int, agentConfig Agent) {
 			defer wg.Done()
 
-			// Generate unique worker parameters
-			workerID := fmt.Sprintf("W%d", index+1)
-			params := generateWorkerParams(workerID)
+			// Use agent's specific parameters
+			params := agentConfig.WorkerParams
+			params.WorkerID = agentConfig.Name
 
-			// Call Qwen with worker-specific parameters
-			results[index] = callQwenWorker(ctx, query, params)
-		}(i)
+			// Add specialization to the query if provided
+			workerQuery := query
+			if strings.TrimSpace(agentConfig.Specialization) != "" {
+				workerQuery = fmt.Sprintf("Context: You are specialized in %s.\n\nUser Query: %s",
+					agentConfig.Specialization, query)
+			}
+
+			// Call Qwen with agent-specific parameters
+			result := callQwenWorker(ctx, workerQuery, params)
+			result.Model = fmt.Sprintf("Agent-%s", agentConfig.Name)
+			results[index] = result
+		}(i, agent)
 	}
 
 	wg.Wait()
 
-	// Master evaluation of all worker responses
+	// Master evaluation of all agent responses
 	evaluation := evaluateResponses(ctx, query, results)
 
 	return results, evaluation
@@ -496,8 +525,8 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
-		// Process the query with Qwen workers and master evaluation
-		results, evaluation := processQuery(ctx, req.Query, req.Models)
+		// Process the query with agents or master-only
+		results, evaluation := processQuery(ctx, req.Query, req.Agents)
 
 		response := QueryResponse{
 			Results:          results,
