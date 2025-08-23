@@ -89,14 +89,23 @@ export class WorkerResponsesComponent {
       'llama-3.1': 'LLaMA 3.1',
       'deepseek-coder': 'DeepSeek Coder'
     };
+
+    // Handle Qwen worker names
+    if (model.startsWith('Qwen-Worker-')) {
+      return model.replace('Qwen-Worker-', 'Qwen W');
+    }
+
     return modelNames[model] || model;
   }
 
   formatResponse(output: string): string {
     if (!output) return '';
 
+    // Clean up Qwen's thinking tags
+    let cleaned = output.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
     // Basic HTML formatting - convert newlines to <br> and handle basic markdown-like formatting
-    let formatted = output
+    let formatted = cleaned
       .replace(/\n/g, '<br>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')

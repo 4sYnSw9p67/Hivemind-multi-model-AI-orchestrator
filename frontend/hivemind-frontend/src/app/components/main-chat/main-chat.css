@@ -654,3 +654,46 @@
 :root[data-theme="dark"] .message-user .message-text code {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Qwen-specific styles */
+.best-response-summary {
+  background: var(--bg-secondary);
+  border: 1px solid var(--brand-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.evaluation-stats {
+  margin-top: var(--space-2);
+  opacity: 0.7;
+}
+
+.worker-params {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: normal;
+  font-family: var(--font-family-mono);
+}
+
+.response-metadata {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.response-metadata .confidence {
+  margin: 0;
+}
+
+.response-metadata .ranking {
+  font-weight: 500;
+}
+
+.consultation-header {
+  margin: var(--space-4) 0 var(--space-3) 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+}

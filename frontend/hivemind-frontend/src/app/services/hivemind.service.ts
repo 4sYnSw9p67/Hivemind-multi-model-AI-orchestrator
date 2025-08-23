@@ -6,11 +6,8 @@ import { ApiKeysService } from './api-keys.service';
 
 export interface HivemindResponse {
     results: ModelResponse[];
-    masterEvaluation?: {
-        bestResponse: string;
-        reasoning: string;
-        ranking: { model: string; score: number }[];
-    };
+    queryId: string;
+    masterEvaluation?: MasterEvaluation;
 }
 
 export interface ModelResponse {
@@ -18,7 +15,29 @@ export interface ModelResponse {
     output?: string;
     error?: string;
     processingTime: number;
+    timestamp: string;
     confidence?: number;
+    workerParams?: WorkerParams;
+}
+
+export interface WorkerParams {
+    temperature: number;
+    top_k: number;
+    top_p: number;
+    worker_id: string;
+}
+
+export interface MasterEvaluation {
+    bestResponseIndex: number;
+    reasoning: string;
+    rankings: ResponseRanking[];
+    evaluationTime: number;
+}
+
+export interface ResponseRanking {
+    index: number;
+    score: number;
+    reasoning: string;
 }
 
 @Injectable({
@@ -45,14 +64,11 @@ export class HivemindService {
     }
 
     private tryBackend(query: string): Observable<HivemindResponse> {
-        const apiKeys = this.apiKeysService.getApiKeys();
-
         return this.http.post<HivemindResponse>(this.backendUrl, {
-            query,
-            apiKeys
+            query
         }).pipe(
             catchError((error) => {
-                console.log('Backend not available, falling back to direct API calls');
+                console.log('Qwen backend not available, falling back to direct API calls');
                 throw error;
             })
         );
@@ -82,15 +98,18 @@ export class HivemindService {
                 results: [{
                     model: 'System',
                     error: 'No API keys configured. Please configure your API keys in Settings.',
-                    processingTime: 0
-                }]
+                    processingTime: 0,
+                    timestamp: new Date().toISOString()
+                }],
+                queryId: `fallback_error_${Date.now()}`
             });
         }
 
         return forkJoin(requests).pipe(
             map(results => ({
                 results,
-                masterEvaluation: this.evaluateResponses(results)
+                queryId: `fallback_${Date.now()}`,
+                masterEvaluation: this.evaluateResponses(results) || undefined
             }))
         );
     }
@@ -117,12 +136,14 @@ export class HivemindService {
                 model: 'GPT-4',
                 output: response.choices[0]?.message?.content || 'No response',
                 processingTime: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
                 confidence: Math.floor(Math.random() * 30) + 70
             })),
             catchError(error => of({
                 model: 'GPT-4',
                 error: `OpenAI API Error: ${error.error?.error?.message || error.message}`,
-                processingTime: Date.now() - startTime
+                processingTime: Date.now() - startTime,
+                timestamp: new Date().toISOString()
             }))
         );
     }
@@ -149,12 +170,14 @@ export class HivemindService {
                 model: 'Claude 3 Sonnet',
                 output: response.content[0]?.text || 'No response',
                 processingTime: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
                 confidence: Math.floor(Math.random() * 30) + 70
             })),
             catchError(error => of({
                 model: 'Claude 3 Sonnet',
                 error: `Anthropic API Error: ${error.error?.error?.message || error.message}`,
-                processingTime: Date.now() - startTime
+                processingTime: Date.now() - startTime,
+                timestamp: new Date().toISOString()
             }))
         );
     }
@@ -183,18 +206,20 @@ export class HivemindService {
                 model: 'Gemini Pro',
                 output: response.candidates[0]?.content?.parts[0]?.text || 'No response',
                 processingTime: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
                 confidence: Math.floor(Math.random() * 30) + 70
             })),
             catchError(error => of({
                 model: 'Gemini Pro',
                 error: `Gemini API Error: ${error.error?.error?.message || error.message}`,
-                processingTime: Date.now() - startTime
+                processingTime: Date.now() - startTime,
+                timestamp: new Date().toISOString()
             }))
         );
     }
 
-    private evaluateResponses(responses: ModelResponse[]): any {
-        // Simple master evaluation logic
+    private evaluateResponses(responses: ModelResponse[]): MasterEvaluation | null {
+        // Simple master evaluation logic for fallback
         const validResponses = responses.filter(r => !r.error && r.output);
 
         if (validResponses.length === 0) {
@@ -202,23 +227,26 @@ export class HivemindService {
         }
 
         // Score based on response length, confidence, and processing time
-        const rankings = validResponses.map(response => {
+        const rankings: ResponseRanking[] = validResponses.map((response, index) => {
             const lengthScore = Math.min((response.output?.length || 0) / 500, 1) * 30;
             const confidenceScore = (response.confidence || 50) * 0.4;
             const speedScore = Math.max(0, (5000 - response.processingTime) / 5000) * 30;
+            const totalScore = lengthScore + confidenceScore + speedScore;
 
             return {
-                model: response.model,
-                score: Math.round(lengthScore + confidenceScore + speedScore)
+                index: responses.indexOf(response),
+                score: Math.round(totalScore) / 100, // Normalize to 0-1 range
+                reasoning: `Score based on length, confidence, and speed`
             };
         }).sort((a, b) => b.score - a.score);
 
-        const bestResponse = rankings[0];
+        const bestRanking = rankings[0];
 
         return {
-            bestResponse: bestResponse.model,
-            reasoning: `${bestResponse.model} provided the most comprehensive response with good confidence and response time.`,
-            ranking: rankings
+            bestResponseIndex: bestRanking.index,
+            reasoning: `${responses[bestRanking.index].model} provided the most comprehensive response with good confidence and response time.`,
+            rankings: rankings,
+            evaluationTime: 0 // Instant evaluation for fallback
         };
     }
 }

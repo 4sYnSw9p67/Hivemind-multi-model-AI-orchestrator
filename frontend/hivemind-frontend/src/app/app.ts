@@ -109,16 +109,16 @@ export class App implements OnInit {
   }
 
   onMessageProcessed(event: { query: string, results: any[] }) {
-    // Transform API results into WorkerResponse format
+    // Transform API results into WorkerResponse format using real data from backend
     const newResponses: WorkerResponse[] = event.results.map(result => ({
       id: crypto.randomUUID(),
       model: result.model,
       output: result.output,
       error: result.error,
       query: event.query,
-      timestamp: new Date(),
-      processingTime: Math.floor(Math.random() * 2000) + 500, // Mock processing time
-      confidence: result.error ? undefined : Math.floor(Math.random() * 30) + 70, // Mock confidence
+      timestamp: result.timestamp ? new Date(result.timestamp) : new Date(),
+      processingTime: result.processingTime || 0,
+      confidence: result.confidence ? Math.round(result.confidence * 100) : undefined, // Convert to percentage
       rating: null
     }));
 

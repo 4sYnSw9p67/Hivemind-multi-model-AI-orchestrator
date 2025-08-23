@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HivemindService } from '../../services/hivemind.service';
+import { HivemindService, MasterEvaluation, ModelResponse } from '../../services/hivemind.service';
 import { Agent } from '../agent-creator/agent-creator';
 
 export interface ChatMessage {
@@ -101,7 +101,7 @@ export class MainChatComponent implements AfterViewChecked {
     return !!(this.currentMessage?.trim() && !this.isLoading);
   }
 
-  private formatResponse(results: any[], masterEvaluation?: any): string {
+  private formatResponse(results: ModelResponse[], masterEvaluation?: MasterEvaluation): string {
     if (!results || results.length === 0) {
       return 'No response received from the models.';
     }
@@ -110,18 +110,27 @@ export class MainChatComponent implements AfterViewChecked {
 
     // Master AI Evaluation Section
     if (masterEvaluation) {
+      const bestResult = results[masterEvaluation.bestResponseIndex];
       html += `<div class="master-evaluation">`;
-      html += `<h4>🏆 Best Response: ${masterEvaluation.bestResponse}</h4>`;
-      html += `<p class="evaluation-reasoning">${masterEvaluation.reasoning}</p>`;
+      html += `<h4>🧠 Master AI Evaluation</h4>`;
+      html += `<div class="best-response-summary">`;
+      html += `<strong>🏆 Best Response:</strong> ${bestResult?.model || 'N/A'}<br>`;
+      html += `<strong>📝 Reasoning:</strong> ${masterEvaluation.reasoning}`;
+      html += `</div>`;
+      html += `<div class="evaluation-stats">`;
+      html += `<small>⏱️ Evaluation time: ${masterEvaluation.evaluationTime}ms</small>`;
+      html += `</div>`;
       html += `</div>`;
     }
 
     html += `<div class="consultation-header">`;
-    html += `<strong>Consulted ${results.length} AI model(s):</strong>`;
+    html += `<strong>🤖 Qwen Workers Consulted (${results.length}):</strong>`;
     html += `</div>`;
 
     results.forEach((result, index) => {
-      const isBest = masterEvaluation?.bestResponse === result.model;
+      const isBest = masterEvaluation?.bestResponseIndex === index;
+      const ranking = masterEvaluation?.rankings.find(r => r.index === index);
+
       html += `<div class="model-response ${isBest ? 'best-response' : ''}">`;
 
       if (isBest) {
@@ -130,30 +139,46 @@ export class MainChatComponent implements AfterViewChecked {
 
       html += `<div class="model-header">`;
       html += `<strong>${result.model}</strong>`;
+      if (result.workerParams) {
+        html += ` <span class="worker-params">(T:${result.workerParams.temperature.toFixed(2)}, K:${result.workerParams.top_k}, P:${result.workerParams.top_p.toFixed(2)})</span>`;
+      }
       if (result.processingTime) {
-        html += ` <span class="processing-time">(${result.processingTime}ms)</span>`;
+        html += ` <span class="processing-time">(${(result.processingTime / 1000).toFixed(1)}s)</span>`;
       }
       html += `</div>`;
 
       if (result.error) {
         html += `<div class="error">⚠️ Error: ${result.error}</div>`;
       } else {
-        html += `<div class="response-content">${result.output}</div>`;
+        // Clean up the response output (remove <think> tags if present)
+        let cleanOutput = result.output || '';
+        cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+        html += `<div class="response-content">${cleanOutput}</div>`;
+
+        html += `<div class="response-metadata">`;
         if (result.confidence) {
-          html += `<div class="confidence">Confidence: ${result.confidence}%</div>`;
+          html += `<span class="confidence">Confidence: ${(result.confidence * 100).toFixed(1)}%</span>`;
         }
+        if (ranking) {
+          html += ` | <span class="ranking">Score: ${(ranking.score * 100).toFixed(0)}/100</span>`;
+        }
+        html += `</div>`;
       }
       html += `</div>`;
     });
 
-    // Rankings
-    if (masterEvaluation?.ranking) {
+    // Rankings Summary
+    if (masterEvaluation?.rankings && masterEvaluation.rankings.length > 1) {
       html += `<div class="rankings">`;
-      html += `<h5>📊 Performance Ranking:</h5>`;
+      html += `<h5>📊 Worker Performance Ranking:</h5>`;
       html += `<ol class="ranking-list">`;
-      masterEvaluation.ranking.forEach((rank: any) => {
-        html += `<li>${rank.model} (Score: ${rank.score})</li>`;
-      });
+      masterEvaluation.rankings
+        .sort((a, b) => b.score - a.score)
+        .forEach((rank) => {
+          const result = results[rank.index];
+          html += `<li>${result?.model || 'Unknown'} - Score: ${(rank.score * 100).toFixed(0)}/100</li>`;
+        });
       html += `</ol>`;
       html += `</div>`;
     }
