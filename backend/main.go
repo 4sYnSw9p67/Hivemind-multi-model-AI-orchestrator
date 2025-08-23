@@ -7,22 +7,32 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/sashabaranov/go-openai"
 )
 
 type AIResult struct {
-	Model           string    `json:"model"`
-	Output          string    `json:"output"`
-	Error           string    `json:"error,omitempty"`
-	ProcessingTime  int64     `json:"processingTime"`
-	Timestamp       time.Time `json:"timestamp"`
+	Model          string        `json:"model"`
+	Output         string        `json:"output"`
+	Error          string        `json:"error,omitempty"`
+	ProcessingTime int64         `json:"processingTime"`
+	Timestamp      time.Time     `json:"timestamp"`
+	Confidence     float64       `json:"confidence,omitempty"`
+	WorkerParams   *WorkerParams `json:"workerParams,omitempty"`
+}
+
+type WorkerParams struct {
+	Temperature float64 `json:"temperature"`
+	TopK        int     `json:"top_k"`
+	TopP        float64 `json:"top_p"`
+	WorkerID    string  `json:"worker_id"`
 }
 
 type QueryRequest struct {
@@ -32,88 +42,123 @@ type QueryRequest struct {
 }
 
 type QueryResponse struct {
-	Results []AIResult `json:"results"`
-	QueryId string     `json:"queryId"`
+	Results          []AIResult        `json:"results"`
+	QueryId          string            `json:"queryId"`
+	MasterEvaluation *MasterEvaluation `json:"masterEvaluation,omitempty"`
 }
 
-// AI Model Handlers
-func callOpenAI(ctx context.Context, query string) AIResult {
+type MasterEvaluation struct {
+	BestResponseIndex int               `json:"bestResponseIndex"`
+	Reasoning         string            `json:"reasoning"`
+	Rankings          []ResponseRanking `json:"rankings"`
+	EvaluationTime    int64             `json:"evaluationTime"`
+}
+
+type ResponseRanking struct {
+	Index     int     `json:"index"`
+	Score     float64 `json:"score"`
+	Reasoning string  `json:"reasoning"`
+}
+
+// Qwen API structures for LM Studio compatibility
+type QwenMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type QwenRequest struct {
+	Model       string        `json:"model"`
+	Messages    []QwenMessage `json:"messages"`
+	Temperature float64       `json:"temperature"`
+	MaxTokens   int           `json:"max_tokens"`
+	TopK        int           `json:"top_k,omitempty"`
+	TopP        float64       `json:"top_p,omitempty"`
+	Stream      bool          `json:"stream"`
+}
+
+type QwenResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// Configuration
+const (
+	QwenAPIURL = "http://localhost:1234/v1/chat/completions"
+	QwenModel  = "qwen/qwen3-8b"
+	NumWorkers = 4
+)
+
+// Generate randomized parameters for worker diversity
+func generateWorkerParams(workerID string) WorkerParams {
+	// Random temperature between 0.3 and 1.2
+	temperature := 0.3 + rand.Float64()*0.9
+
+	// Random top_k between 20 and 80
+	topK := 20 + rand.Intn(61)
+
+	// Random top_p between 0.7 and 0.95
+	topP := 0.7 + rand.Float64()*0.25
+
+	return WorkerParams{
+		Temperature: temperature,
+		TopK:        topK,
+		TopP:        topP,
+		WorkerID:    workerID,
+	}
+}
+
+// Call Qwen with specific worker parameters
+func callQwenWorker(ctx context.Context, query string, params WorkerParams) AIResult {
 	start := time.Now()
-	
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return AIResult{
-			Model:          "GPT-4",
-			Error:          "OpenAI API key not configured",
-			ProcessingTime: time.Since(start).Milliseconds(),
-			Timestamp:      time.Now(),
-		}
+
+	qwenReq := QwenRequest{
+		Model: QwenModel,
+		Messages: []QwenMessage{
+			{Role: "user", Content: query},
+		},
+		Temperature: params.Temperature,
+		MaxTokens:   1000,
+		TopK:        params.TopK,
+		TopP:        params.TopP,
+		Stream:      false,
 	}
 
-	client := openai.NewClient(apiKey)
-	resp, err := client.CreateChatCompletion(
-		ctx,
-		openai.ChatCompletionRequest{
-			Model: openai.GPT4o,
-			Messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: query},
-			},
-			MaxTokens: 1000,
-		},
-	)
-	
+	reqBody, err := json.Marshal(qwenReq)
 	if err != nil {
 		return AIResult{
-			Model:          "GPT-4",
-			Error:          err.Error(),
+			Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
+			Error:          fmt.Sprintf("Failed to marshal request: %v", err),
 			ProcessingTime: time.Since(start).Milliseconds(),
 			Timestamp:      time.Now(),
+			WorkerParams:   &params,
 		}
 	}
-	
-	return AIResult{
-		Model:          "GPT-4",
-		Output:         resp.Choices[0].Message.Content,
-		ProcessingTime: time.Since(start).Milliseconds(),
-		Timestamp:      time.Now(),
-	}
-}
 
-func callClaude(ctx context.Context, query string) AIResult {
-	start := time.Now()
-	
-	apiKey := os.Getenv("CLAUDE_API_KEY")
-	if apiKey == "" {
+	req, err := http.NewRequestWithContext(ctx, "POST", QwenAPIURL, bytes.NewBuffer(reqBody))
+	if err != nil {
 		return AIResult{
-			Model:          "Claude-3-Sonnet",
-			Error:          "Claude API key not configured",
+			Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
+			Error:          fmt.Sprintf("Failed to create request: %v", err),
 			ProcessingTime: time.Since(start).Milliseconds(),
 			Timestamp:      time.Now(),
+			WorkerParams:   &params,
 		}
 	}
 
-	payload := map[string]interface{}{
-		"model": "claude-3-sonnet-20240229",
-		"max_tokens": 1000,
-		"messages": []map[string]string{
-			{"role": "user", "content": query},
-		},
-	}
-	
-	body, _ := json.Marshal(payload)
-	req, _ := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(body))
-	req.Header.Set("x-api-key", apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("anthropic-version", "2023-06-01")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return AIResult{
-			Model:          "Claude-3-Sonnet",
-			Error:          err.Error(),
+			Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
+			Error:          fmt.Sprintf("Request failed: %v", err),
 			ProcessingTime: time.Since(start).Milliseconds(),
 			Timestamp:      time.Now(),
+			WorkerParams:   &params,
 		}
 	}
 	defer resp.Body.Close()
@@ -121,105 +166,286 @@ func callClaude(ctx context.Context, query string) AIResult {
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return AIResult{
-			Model:          "Claude-3-Sonnet",
+			Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
 			Error:          "Failed to read response",
 			ProcessingTime: time.Since(start).Milliseconds(),
 			Timestamp:      time.Now(),
+			WorkerParams:   &params,
 		}
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		return AIResult{
-			Model:          "Claude-3-Sonnet",
-			Error:          fmt.Sprintf("API error: %s", string(responseBody)),
+			Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
+			Error:          fmt.Sprintf("API error (status %d): %s", resp.StatusCode, string(responseBody)),
 			ProcessingTime: time.Since(start).Milliseconds(),
 			Timestamp:      time.Now(),
+			WorkerParams:   &params,
 		}
 	}
 
-	var claudeResp struct {
-		Content []struct {
-			Text string `json:"text"`
-		} `json:"content"`
-	}
-	
-	if err := json.Unmarshal(responseBody, &claudeResp); err != nil {
+	var qwenResp QwenResponse
+	if err := json.Unmarshal(responseBody, &qwenResp); err != nil {
 		return AIResult{
-			Model:          "Claude-3-Sonnet",
-			Error:          "Failed to parse response",
+			Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
+			Error:          fmt.Sprintf("Failed to parse response: %v", err),
 			ProcessingTime: time.Since(start).Milliseconds(),
 			Timestamp:      time.Now(),
+			WorkerParams:   &params,
 		}
 	}
 
 	output := ""
-	if len(claudeResp.Content) > 0 {
-		output = claudeResp.Content[0].Text
+	if len(qwenResp.Choices) > 0 {
+		output = qwenResp.Choices[0].Message.Content
 	}
 
+	// Generate mock confidence based on response length and coherence
+	confidence := calculateConfidence(output, params)
+
 	return AIResult{
-		Model:          "Claude-3-Sonnet",
+		Model:          fmt.Sprintf("Qwen-Worker-%s", params.WorkerID),
 		Output:         output,
 		ProcessingTime: time.Since(start).Milliseconds(),
 		Timestamp:      time.Now(),
+		Confidence:     confidence,
+		WorkerParams:   &params,
 	}
 }
 
-// Mock implementation for models we don't have API keys for
-func callMockModel(modelName, query string) AIResult {
+// Calculate mock confidence based on response characteristics
+func calculateConfidence(output string, params WorkerParams) float64 {
+	if output == "" {
+		return 0.0
+	}
+
+	// Base confidence starts at 0.5
+	confidence := 0.5
+
+	// Adjust based on length (longer responses get higher confidence, up to a point)
+	length := len(strings.TrimSpace(output))
+	if length > 50 && length < 500 {
+		confidence += 0.2
+	} else if length >= 500 {
+		confidence += 0.3
+	}
+
+	// Lower temperature generally means more confident responses
+	tempBonus := (1.0 - params.Temperature) * 0.2
+	confidence += tempBonus
+
+	// Add some randomness
+	confidence += (rand.Float64() - 0.5) * 0.1
+
+	// Clamp between 0.1 and 1.0
+	if confidence < 0.1 {
+		confidence = 0.1
+	}
+	if confidence > 1.0 {
+		confidence = 1.0
+	}
+
+	return confidence
+}
+
+// Master evaluation using Qwen with conservative parameters
+func evaluateResponses(ctx context.Context, query string, responses []AIResult) *MasterEvaluation {
 	start := time.Now()
-	
-	// Simulate API delay
-	time.Sleep(time.Duration(500+len(query)%1000) * time.Millisecond)
-	
-	responses := map[string]string{
-		"LLaMA-3.1":      fmt.Sprintf("LLaMA response: This is a comprehensive answer to your query '%s'. LLaMA excels at reasoning and following instructions.", query),
-		"DeepSeek-Coder": fmt.Sprintf("DeepSeek Coder response: As a coding specialist, I'll help you with '%s'. Here's my technical analysis and solution.", query),
-		"Mistral-7B":     fmt.Sprintf("Mistral response: Based on your query '%s', here's a detailed explanation with practical insights.", query),
+
+	// Filter out error responses
+	validResponses := make([]AIResult, 0)
+	for i, resp := range responses {
+		if resp.Error == "" && strings.TrimSpace(resp.Output) != "" {
+			resp.Model = fmt.Sprintf("Response %d (%s)", i+1, resp.Model)
+			validResponses = append(validResponses, resp)
+		}
 	}
-	
-	output, exists := responses[modelName]
-	if !exists {
-		output = fmt.Sprintf("Generic AI response to: %s", query)
+
+	if len(validResponses) == 0 {
+		return &MasterEvaluation{
+			BestResponseIndex: -1,
+			Reasoning:         "No valid responses to evaluate",
+			Rankings:          []ResponseRanking{},
+			EvaluationTime:    time.Since(start).Milliseconds(),
+		}
 	}
-	
-	return AIResult{
-		Model:          modelName,
-		Output:         output,
-		ProcessingTime: time.Since(start).Milliseconds(),
-		Timestamp:      time.Now(),
+
+	// Create evaluation prompt
+	evaluationPrompt := buildEvaluationPrompt(query, validResponses)
+
+	// Use conservative parameters for master evaluation
+	masterParams := WorkerParams{
+		Temperature: 0.1, // Low temperature for consistent evaluation
+		TopK:        30,
+		TopP:        0.8,
+		WorkerID:    "Master",
+	}
+
+	// Call Qwen for evaluation
+	evalResult := callQwenWorker(ctx, evaluationPrompt, masterParams)
+	if evalResult.Error != "" {
+		// Fallback to simple evaluation based on confidence and length
+		return performSimpleEvaluation(validResponses, time.Since(start).Milliseconds())
+	}
+
+	// Parse evaluation result
+	return parseEvaluationResult(evalResult.Output, len(responses), time.Since(start).Milliseconds())
+}
+
+func buildEvaluationPrompt(query string, responses []AIResult) string {
+	prompt := fmt.Sprintf(`As a master AI evaluator, analyze these responses to the query: "%s"
+
+Responses:
+`, query)
+
+	for i, resp := range responses {
+		prompt += fmt.Sprintf("\nResponse %d (%s):\n%s\n", i+1, resp.Model, resp.Output)
+		if resp.WorkerParams != nil {
+			prompt += fmt.Sprintf("(Parameters: temp=%.2f, confidence=%.2f)\n", resp.WorkerParams.Temperature, resp.Confidence)
+		}
+	}
+
+	prompt += `
+Please evaluate these responses and provide:
+1. Which response is best (number 1-` + fmt.Sprintf("%d", len(responses)) + `)
+2. Brief reasoning for your choice
+3. Rank all responses from best to worst
+
+Format your response as:
+BEST: [number]
+REASONING: [brief explanation]
+RANKINGS: [comma-separated list from best to worst, e.g., "2,1,3"]`
+
+	return prompt
+}
+
+func parseEvaluationResult(evaluation string, totalResponses int, evaluationTime int64) *MasterEvaluation {
+	lines := strings.Split(evaluation, "\n")
+
+	bestIndex := -1
+	reasoning := "Unable to parse evaluation"
+	rankings := make([]ResponseRanking, 0)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "BEST:") {
+			if _, err := fmt.Sscanf(line, "BEST: %d", &bestIndex); err == nil {
+				bestIndex-- // Convert to 0-based index
+			}
+		} else if strings.HasPrefix(line, "REASONING:") {
+			reasoning = strings.TrimSpace(strings.TrimPrefix(line, "REASONING:"))
+		} else if strings.HasPrefix(line, "RANKINGS:") {
+			rankStr := strings.TrimSpace(strings.TrimPrefix(line, "RANKINGS:"))
+			rankings = parseRankings(rankStr)
+		}
+	}
+
+	// Validate best index
+	if bestIndex < 0 || bestIndex >= totalResponses {
+		bestIndex = 0 // Default to first response
+	}
+
+	return &MasterEvaluation{
+		BestResponseIndex: bestIndex,
+		Reasoning:         reasoning,
+		Rankings:          rankings,
+		EvaluationTime:    evaluationTime,
 	}
 }
 
-func processQuery(ctx context.Context, query string, models []string) []AIResult {
-	// Default models if none specified
-	if len(models) == 0 {
-		models = []string{"GPT-4", "Claude-3-Sonnet", "LLaMA-3.1", "DeepSeek-Coder"}
+func parseRankings(rankStr string) []ResponseRanking {
+	parts := strings.Split(rankStr, ",")
+	rankings := make([]ResponseRanking, 0)
+
+	for i, part := range parts {
+		part = strings.TrimSpace(part)
+		var responseIndex int
+		if _, err := fmt.Sscanf(part, "%d", &responseIndex); err == nil {
+			score := 1.0 - (float64(i) * 0.2) // Decreasing scores
+			if score < 0.1 {
+				score = 0.1
+			}
+			rankings = append(rankings, ResponseRanking{
+				Index:     responseIndex - 1, // Convert to 0-based
+				Score:     score,
+				Reasoning: fmt.Sprintf("Ranked #%d by master evaluation", i+1),
+			})
+		}
 	}
 
-	var wg sync.WaitGroup
-	results := make([]AIResult, len(models))
-	
-	for i, model := range models {
-		wg.Add(1)
-		go func(index int, modelName string) {
-			defer wg.Done()
-			
-			switch modelName {
-			case "GPT-4":
-				results[index] = callOpenAI(ctx, query)
-			case "Claude-3-Sonnet":
-				results[index] = callClaude(ctx, query)
-			case "LLaMA-3.1", "DeepSeek-Coder", "Mistral-7B":
-				results[index] = callMockModel(modelName, query)
-			default:
-				results[index] = callMockModel(modelName, query)
-			}
-		}(i, model)
+	return rankings
+}
+
+func performSimpleEvaluation(responses []AIResult, evaluationTime int64) *MasterEvaluation {
+	if len(responses) == 0 {
+		return &MasterEvaluation{
+			BestResponseIndex: -1,
+			Reasoning:         "No responses to evaluate",
+			Rankings:          []ResponseRanking{},
+			EvaluationTime:    evaluationTime,
+		}
 	}
-	
+
+	// Simple ranking based on confidence and response length
+	bestIndex := 0
+	bestScore := 0.0
+	rankings := make([]ResponseRanking, len(responses))
+
+	for i, resp := range responses {
+		// Score based on confidence and response quality
+		score := resp.Confidence
+		if len(strings.TrimSpace(resp.Output)) > 100 {
+			score += 0.1
+		}
+
+		rankings[i] = ResponseRanking{
+			Index:     i,
+			Score:     score,
+			Reasoning: fmt.Sprintf("Confidence: %.2f", resp.Confidence),
+		}
+
+		if score > bestScore {
+			bestScore = score
+			bestIndex = i
+		}
+	}
+
+	return &MasterEvaluation{
+		BestResponseIndex: bestIndex,
+		Reasoning:         "Selected based on confidence score and response quality",
+		Rankings:          rankings,
+		EvaluationTime:    evaluationTime,
+	}
+}
+
+func processQuery(ctx context.Context, query string, models []string) ([]AIResult, *MasterEvaluation) {
+	// Initialize random seed
+	rand.Seed(time.Now().UnixNano())
+
+	// Create Qwen workers with randomized parameters
+	var wg sync.WaitGroup
+	results := make([]AIResult, NumWorkers)
+
+	for i := 0; i < NumWorkers; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+
+			// Generate unique worker parameters
+			workerID := fmt.Sprintf("W%d", index+1)
+			params := generateWorkerParams(workerID)
+
+			// Call Qwen with worker-specific parameters
+			results[index] = callQwenWorker(ctx, query, params)
+		}(i)
+	}
+
 	wg.Wait()
-	return results
+
+	// Master evaluation of all worker responses
+	evaluation := evaluateResponses(ctx, query, results)
+
+	return results, evaluation
 }
 
 func main() {
@@ -253,7 +479,7 @@ func main() {
 		var req QueryRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid request format",
+				"error":   "Invalid request format",
 				"details": err.Error(),
 			})
 			return
@@ -266,16 +492,17 @@ func main() {
 			return
 		}
 
-		// Create context with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+		// Create context with timeout (increased for master evaluation)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
-		// Process the query
-		results := processQuery(ctx, req.Query, req.Models)
-		
+		// Process the query with Qwen workers and master evaluation
+		results, evaluation := processQuery(ctx, req.Query, req.Models)
+
 		response := QueryResponse{
-			Results: results,
-			QueryId: generateQueryId(),
+			Results:          results,
+			QueryId:          generateQueryId(),
+			MasterEvaluation: evaluation,
 		}
 
 		c.JSON(http.StatusOK, response)
@@ -283,14 +510,50 @@ func main() {
 
 	// Get available models
 	r.GET("/models", func(c *gin.Context) {
+		// Check if Qwen is available by making a test request
+		qwenAvailable := checkQwenAvailability()
+
 		models := []map[string]interface{}{
-			{"name": "GPT-4", "provider": "OpenAI", "available": os.Getenv("OPENAI_API_KEY") != ""},
-			{"name": "Claude-3-Sonnet", "provider": "Anthropic", "available": os.Getenv("CLAUDE_API_KEY") != ""},
-			{"name": "LLaMA-3.1", "provider": "Meta", "available": true, "note": "Mock implementation"},
-			{"name": "DeepSeek-Coder", "provider": "DeepSeek", "available": true, "note": "Mock implementation"},
-			{"name": "Mistral-7B", "provider": "Mistral", "available": true, "note": "Mock implementation"},
+			{
+				"name":        "Qwen Workers",
+				"provider":    "Local (LM Studio)",
+				"available":   qwenAvailable,
+				"description": fmt.Sprintf("%d Qwen workers with randomized parameters", NumWorkers),
+				"endpoint":    QwenAPIURL,
+				"model":       QwenModel,
+			},
+			{
+				"name":        "Master Evaluator",
+				"provider":    "Local (LM Studio)",
+				"available":   qwenAvailable,
+				"description": "Qwen master AI for response evaluation and ranking",
+				"endpoint":    QwenAPIURL,
+				"model":       QwenModel,
+			},
 		}
-		c.JSON(http.StatusOK, gin.H{"models": models})
+		c.JSON(http.StatusOK, gin.H{
+			"models":         models,
+			"system":         "Hivemind with Qwen",
+			"workers":        NumWorkers,
+			"qwen_available": qwenAvailable,
+		})
+	})
+
+	// Health check for Qwen
+	r.GET("/qwen/health", func(c *gin.Context) {
+		available := checkQwenAvailability()
+		status := map[string]interface{}{
+			"qwen_available": available,
+			"endpoint":       QwenAPIURL,
+			"model":          QwenModel,
+			"workers":        NumWorkers,
+		}
+
+		if available {
+			c.JSON(http.StatusOK, status)
+		} else {
+			c.JSON(http.StatusServiceUnavailable, status)
+		}
 	})
 
 	port := os.Getenv("PORT")
@@ -298,14 +561,38 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("🚀 Hivemind backend starting on port %s", port)
+	// Check Qwen availability at startup
+	qwenStatus := checkQwenAvailability()
+	qwenStatusText := "❌ NOT AVAILABLE"
+	if qwenStatus {
+		qwenStatusText = "✅ AVAILABLE"
+	}
+
+	log.Printf("🧠 Hivemind backend starting on port %s", port)
+	log.Printf("🔧 Qwen Integration: %s (%s)", qwenStatusText, QwenAPIURL)
+	log.Printf("👥 Workers: %d with randomized parameters", NumWorkers)
 	log.Printf("📊 Health check: http://localhost:%s/health", port)
 	log.Printf("🤖 Query endpoint: http://localhost:%s/query", port)
 	log.Printf("📋 Models endpoint: http://localhost:%s/models", port)
-	
+	log.Printf("🏥 Qwen health: http://localhost:%s/qwen/health", port)
+
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+// Check if Qwen API is available
+func checkQwenAvailability() bool {
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	// Try to get models list first
+	resp, err := client.Get("http://localhost:1234/v1/models")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
 }
 
 func generateQueryId() string {
