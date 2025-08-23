@@ -692,6 +692,13 @@
   font-weight: 500;
 }
 
+.ranking-detail {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin-left: var(--space-1);
+}
+
 .consultation-header {
   margin: var(--space-4) 0 var(--space-3) 0;
   padding-bottom: var(--space-2);

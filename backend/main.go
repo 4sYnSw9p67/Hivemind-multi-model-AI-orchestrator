@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -155,7 +156,7 @@ func callQwenWorker(ctx context.Context, query string, params WorkerParams) AIRe
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 45 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return AIResult{
@@ -257,12 +258,16 @@ func calculateConfidence(output string, params WorkerParams) float64 {
 func evaluateResponses(ctx context.Context, query string, responses []AIResult) *MasterEvaluation {
 	start := time.Now()
 
-	// Filter out error responses
+	// Filter out error responses and track original indices
 	validResponses := make([]AIResult, 0)
+	validIndices := make([]int, 0)
+
 	for i, resp := range responses {
 		if resp.Error == "" && strings.TrimSpace(resp.Output) != "" {
-			resp.Model = fmt.Sprintf("Response %d (%s)", i+1, resp.Model)
-			validResponses = append(validResponses, resp)
+			modifiedResp := resp
+			modifiedResp.Model = fmt.Sprintf("Response %d (%s)", len(validResponses)+1, resp.Model)
+			validResponses = append(validResponses, modifiedResp)
+			validIndices = append(validIndices, i)
 		}
 	}
 
@@ -272,6 +277,20 @@ func evaluateResponses(ctx context.Context, query string, responses []AIResult) 
 			Reasoning:         "No valid responses to evaluate",
 			Rankings:          []ResponseRanking{},
 			EvaluationTime:    time.Since(start).Milliseconds(),
+		}
+	}
+
+	// If only one valid response, no need for master evaluation
+	if len(validResponses) == 1 {
+		return &MasterEvaluation{
+			BestResponseIndex: validIndices[0],
+			Reasoning:         fmt.Sprintf("%s provided the only successful response", responses[validIndices[0]].Model),
+			Rankings: []ResponseRanking{{
+				Index:     validIndices[0],
+				Score:     1.0,
+				Reasoning: "Only successful response",
+			}},
+			EvaluationTime: time.Since(start).Milliseconds(),
 		}
 	}
 
@@ -290,11 +309,11 @@ func evaluateResponses(ctx context.Context, query string, responses []AIResult) 
 	evalResult := callQwenWorker(ctx, evaluationPrompt, masterParams)
 	if evalResult.Error != "" {
 		// Fallback to simple evaluation based on confidence and length
-		return performSimpleEvaluation(validResponses, time.Since(start).Milliseconds())
+		return performSimpleEvaluationWithMapping(validResponses, validIndices, time.Since(start).Milliseconds())
 	}
 
-	// Parse evaluation result
-	return parseEvaluationResult(evalResult.Output, len(responses), time.Since(start).Milliseconds())
+	// Parse evaluation result with proper index mapping
+	return parseEvaluationResultWithMapping(evalResult.Output, validResponses, validIndices, time.Since(start).Milliseconds())
 }
 
 func buildEvaluationPrompt(query string, responses []AIResult) string {
@@ -324,7 +343,7 @@ RANKINGS: [comma-separated list from best to worst, e.g., "2,1,3"]`
 	return prompt
 }
 
-func parseEvaluationResult(evaluation string, totalResponses int, evaluationTime int64) *MasterEvaluation {
+func parseEvaluationResultWithMapping(evaluation string, validResponses []AIResult, validIndices []int, evaluationTime int64) *MasterEvaluation {
 	lines := strings.Split(evaluation, "\n")
 
 	bestIndex := -1
@@ -334,20 +353,24 @@ func parseEvaluationResult(evaluation string, totalResponses int, evaluationTime
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "BEST:") {
-			if _, err := fmt.Sscanf(line, "BEST: %d", &bestIndex); err == nil {
-				bestIndex-- // Convert to 0-based index
+			var evalBestIndex int
+			if _, err := fmt.Sscanf(line, "BEST: %d", &evalBestIndex); err == nil {
+				evalBestIndex-- // Convert to 0-based index
+				if evalBestIndex >= 0 && evalBestIndex < len(validIndices) {
+					bestIndex = validIndices[evalBestIndex] // Map back to original index
+				}
 			}
 		} else if strings.HasPrefix(line, "REASONING:") {
 			reasoning = strings.TrimSpace(strings.TrimPrefix(line, "REASONING:"))
 		} else if strings.HasPrefix(line, "RANKINGS:") {
 			rankStr := strings.TrimSpace(strings.TrimPrefix(line, "RANKINGS:"))
-			rankings = parseRankings(rankStr)
+			rankings = parseRankingsWithMapping(rankStr, validIndices)
 		}
 	}
 
 	// Validate best index
-	if bestIndex < 0 || bestIndex >= totalResponses {
-		bestIndex = 0 // Default to first response
+	if bestIndex < 0 || bestIndex >= len(validIndices) {
+		bestIndex = validIndices[0] // Default to first valid response
 	}
 
 	return &MasterEvaluation{
@@ -358,6 +381,35 @@ func parseEvaluationResult(evaluation string, totalResponses int, evaluationTime
 	}
 }
 
+func parseEvaluationResult(evaluation string, totalResponses int, evaluationTime int64) *MasterEvaluation {
+	// Legacy function - kept for compatibility
+	return parseEvaluationResultWithMapping(evaluation, nil, nil, evaluationTime)
+}
+
+func parseRankingsWithMapping(rankStr string, validIndices []int) []ResponseRanking {
+	parts := strings.Split(rankStr, ",")
+	rankings := make([]ResponseRanking, 0)
+
+	for i, part := range parts {
+		part = strings.TrimSpace(part)
+		var responseIndex int
+		if _, err := fmt.Sscanf(part, "%d", &responseIndex); err == nil {
+			responseIndex-- // Convert to 0-based
+			if responseIndex >= 0 && responseIndex < len(validIndices) {
+				// Dynamic scoring based on position with better distribution
+				score := calculatePositionalScore(i, len(parts))
+				rankings = append(rankings, ResponseRanking{
+					Index:     validIndices[responseIndex], // Map back to original index
+					Score:     score,
+					Reasoning: fmt.Sprintf("Ranked #%d by master evaluation", i+1),
+				})
+			}
+		}
+	}
+
+	return rankings
+}
+
 func parseRankings(rankStr string) []ResponseRanking {
 	parts := strings.Split(rankStr, ",")
 	rankings := make([]ResponseRanking, 0)
@@ -366,10 +418,8 @@ func parseRankings(rankStr string) []ResponseRanking {
 		part = strings.TrimSpace(part)
 		var responseIndex int
 		if _, err := fmt.Sscanf(part, "%d", &responseIndex); err == nil {
-			score := 1.0 - (float64(i) * 0.2) // Decreasing scores
-			if score < 0.1 {
-				score = 0.1
-			}
+			// Dynamic scoring based on position with better distribution
+			score := calculatePositionalScore(i, len(parts))
 			rankings = append(rankings, ResponseRanking{
 				Index:     responseIndex - 1, // Convert to 0-based
 				Score:     score,
@@ -379,6 +429,73 @@ func parseRankings(rankStr string) []ResponseRanking {
 	}
 
 	return rankings
+}
+
+// Calculate dynamic positional scores with better distribution
+func calculatePositionalScore(position, totalItems int) float64 {
+	if totalItems <= 1 {
+		return 1.0
+	}
+
+	// Use exponential decay for more natural scoring distribution
+	// First place gets close to 1.0, subsequent places decay exponentially
+	decay := 0.85 // Decay factor (higher = less harsh penalty)
+	score := math.Pow(decay, float64(position))
+
+	// Ensure minimum score of 0.1
+	if score < 0.1 {
+		score = 0.1
+	}
+
+	return score
+}
+
+func performSimpleEvaluationWithMapping(validResponses []AIResult, validIndices []int, evaluationTime int64) *MasterEvaluation {
+	if len(validResponses) == 0 {
+		return &MasterEvaluation{
+			BestResponseIndex: -1,
+			Reasoning:         "No responses to evaluate",
+			Rankings:          []ResponseRanking{},
+			EvaluationTime:    evaluationTime,
+		}
+	}
+
+	// Advanced multi-factor scoring system
+	rankings := make([]ResponseRanking, len(validResponses))
+
+	for i, resp := range validResponses {
+		score := calculateAdvancedScore(resp, validResponses)
+		rankings[i] = ResponseRanking{
+			Index:     validIndices[i], // Use original index
+			Score:     score,
+			Reasoning: generateScoreReasoning(resp, score),
+		}
+	}
+
+	// Sort rankings by score (highest first)
+	for i := 0; i < len(rankings)-1; i++ {
+		for j := i + 1; j < len(rankings); j++ {
+			if rankings[j].Score > rankings[i].Score {
+				rankings[i], rankings[j] = rankings[j], rankings[i]
+			}
+		}
+	}
+
+	bestIndex := rankings[0].Index
+	bestResponse := validResponses[0]
+	for _, resp := range validResponses {
+		if strings.Contains(resp.Model, fmt.Sprintf("Agent-%s", strings.Split(bestResponse.Model, "-")[1])) {
+			bestResponse = resp
+			break
+		}
+	}
+
+	return &MasterEvaluation{
+		BestResponseIndex: bestIndex,
+		Reasoning:         generateEvaluationReasoning(bestResponse, rankings[0].Score),
+		Rankings:          rankings,
+		EvaluationTime:    evaluationTime,
+	}
 }
 
 func performSimpleEvaluation(responses []AIResult, evaluationTime int64) *MasterEvaluation {
@@ -391,36 +508,313 @@ func performSimpleEvaluation(responses []AIResult, evaluationTime int64) *Master
 		}
 	}
 
-	// Simple ranking based on confidence and response length
-	bestIndex := 0
-	bestScore := 0.0
+	// Advanced multi-factor scoring system
 	rankings := make([]ResponseRanking, len(responses))
 
 	for i, resp := range responses {
-		// Score based on confidence and response quality
-		score := resp.Confidence
-		if len(strings.TrimSpace(resp.Output)) > 100 {
-			score += 0.1
-		}
-
+		score := calculateAdvancedScore(resp, responses)
 		rankings[i] = ResponseRanking{
 			Index:     i,
 			Score:     score,
-			Reasoning: fmt.Sprintf("Confidence: %.2f", resp.Confidence),
-		}
-
-		if score > bestScore {
-			bestScore = score
-			bestIndex = i
+			Reasoning: generateScoreReasoning(resp, score),
 		}
 	}
+
+	// Sort rankings by score (highest first)
+	for i := 0; i < len(rankings)-1; i++ {
+		for j := i + 1; j < len(rankings); j++ {
+			if rankings[j].Score > rankings[i].Score {
+				rankings[i], rankings[j] = rankings[j], rankings[i]
+			}
+		}
+	}
+
+	bestIndex := rankings[0].Index
+	bestResponse := responses[bestIndex]
 
 	return &MasterEvaluation{
 		BestResponseIndex: bestIndex,
-		Reasoning:         "Selected based on confidence score and response quality",
+		Reasoning:         generateEvaluationReasoning(bestResponse, rankings[0].Score),
 		Rankings:          rankings,
 		EvaluationTime:    evaluationTime,
 	}
+}
+
+// Advanced scoring algorithm considering multiple factors
+func calculateAdvancedScore(response AIResult, allResponses []AIResult) float64 {
+	if response.Error != "" {
+		return 0.0
+	}
+
+	output := strings.TrimSpace(response.Output)
+	if output == "" {
+		return 0.0
+	}
+
+	var totalScore float64
+
+	// 1. Base Confidence Score (30% weight)
+	confidenceScore := response.Confidence * 0.3
+	totalScore += confidenceScore
+
+	// 2. Response Length Score (15% weight) - optimal length between 100-1000 chars
+	lengthScore := calculateLengthScore(output) * 0.15
+	totalScore += lengthScore
+
+	// 3. Content Quality Score (25% weight)
+	qualityScore := calculateContentQuality(output) * 0.25
+	totalScore += qualityScore
+
+	// 4. Processing Efficiency Score (10% weight) - faster is better, but not at quality cost
+	efficiencyScore := calculateEfficiencyScore(response.ProcessingTime) * 0.10
+	totalScore += efficiencyScore
+
+	// 5. Parameter Balance Score (10% weight) - well-balanced parameters often produce better results
+	paramScore := calculateParameterScore(response.WorkerParams) * 0.10
+	totalScore += paramScore
+
+	// 6. Uniqueness Score (10% weight) - reward unique insights
+	uniquenessScore := calculateUniquenessScore(output, allResponses) * 0.10
+	totalScore += uniquenessScore
+
+	// Normalize to 0-1 range
+	if totalScore > 1.0 {
+		totalScore = 1.0
+	}
+	if totalScore < 0.0 {
+		totalScore = 0.0
+	}
+
+	return totalScore
+}
+
+func calculateLengthScore(output string) float64 {
+	length := len(output)
+
+	// Optimal range: 200-800 characters
+	if length >= 200 && length <= 800 {
+		return 1.0
+	} else if length >= 100 && length <= 1200 {
+		// Gradual penalty outside optimal range
+		if length < 200 {
+			return float64(length-100) / 100.0 // 0.0 to 1.0
+		} else {
+			return 1.0 - (float64(length-800) / 800.0) // 1.0 to 0.5
+		}
+	} else if length < 50 {
+		return 0.1 // Very short responses are poor
+	} else {
+		return 0.3 // Very long responses may be verbose
+	}
+}
+
+func calculateContentQuality(output string) float64 {
+	var score float64 = 0.5 // Base score
+
+	// Clean the output for analysis
+	cleaned := strings.ToLower(output)
+
+	// Positive indicators
+	if strings.Contains(cleaned, "example") || strings.Contains(cleaned, "for instance") {
+		score += 0.1 // Provides examples
+	}
+	if strings.Contains(cleaned, "however") || strings.Contains(cleaned, "although") || strings.Contains(cleaned, "while") {
+		score += 0.1 // Shows nuanced thinking
+	}
+	if strings.Contains(cleaned, "because") || strings.Contains(cleaned, "therefore") || strings.Contains(cleaned, "since") {
+		score += 0.1 // Provides reasoning
+	}
+
+	// Structure indicators
+	sentences := strings.Split(output, ".")
+	if len(sentences) >= 3 && len(sentences) <= 10 {
+		score += 0.1 // Good structure
+	}
+
+	// Check for formatting (markdown, bullets, etc.)
+	if strings.Contains(output, "**") || strings.Contains(output, "*") || strings.Contains(output, "-") {
+		score += 0.1 // Well formatted
+	}
+
+	// Negative indicators
+	if strings.Contains(cleaned, "i don't know") || strings.Contains(cleaned, "i'm not sure") {
+		score -= 0.2 // Uncertainty
+	}
+	if len(strings.Fields(output)) < 10 {
+		score -= 0.2 // Too brief
+	}
+
+	// Ensure bounds
+	if score > 1.0 {
+		score = 1.0
+	}
+	if score < 0.0 {
+		score = 0.0
+	}
+
+	return score
+}
+
+func calculateEfficiencyScore(processingTime int64) float64 {
+	// Convert milliseconds to seconds
+	seconds := float64(processingTime) / 1000.0
+
+	// Optimal range: 5-20 seconds (good balance of speed and quality)
+	if seconds >= 5.0 && seconds <= 20.0 {
+		return 1.0
+	} else if seconds < 5.0 {
+		// Very fast might indicate shallow processing
+		return 0.7 + (seconds / 5.0 * 0.3)
+	} else if seconds <= 60.0 {
+		// Gradual penalty for slower responses
+		return 1.0 - ((seconds - 20.0) / 40.0 * 0.5)
+	} else {
+		// Very slow responses get low efficiency score
+		return 0.2
+	}
+}
+
+func calculateParameterScore(params *WorkerParams) float64 {
+	if params == nil {
+		return 0.5
+	}
+
+	var score float64 = 0.5
+
+	// Reward balanced parameters
+	// Temperature: 0.4-0.9 is generally good balance
+	if params.Temperature >= 0.4 && params.Temperature <= 0.9 {
+		score += 0.2
+	} else if params.Temperature >= 0.2 && params.Temperature <= 1.2 {
+		score += 0.1
+	}
+
+	// Top K: 30-70 is usually good range
+	if params.TopK >= 30 && params.TopK <= 70 {
+		score += 0.2
+	} else if params.TopK >= 20 && params.TopK <= 80 {
+		score += 0.1
+	}
+
+	// Top P: 0.8-0.95 is typically optimal
+	if params.TopP >= 0.8 && params.TopP <= 0.95 {
+		score += 0.1
+	}
+
+	return math.Min(score, 1.0)
+}
+
+func calculateUniquenessScore(output string, allResponses []AIResult) float64 {
+	if len(allResponses) <= 1 {
+		return 0.5 // No comparison possible
+	}
+
+	outputWords := strings.Fields(strings.ToLower(output))
+	if len(outputWords) == 0 {
+		return 0.0
+	}
+
+	totalSimilarity := 0.0
+	comparisons := 0
+
+	for _, other := range allResponses {
+		if other.Output == output || other.Error != "" {
+			continue // Skip self and error responses
+		}
+
+		otherWords := strings.Fields(strings.ToLower(other.Output))
+		if len(otherWords) == 0 {
+			continue
+		}
+
+		// Calculate word overlap similarity
+		overlap := 0
+		for _, word := range outputWords {
+			if len(word) > 3 { // Only count significant words
+				for _, otherWord := range otherWords {
+					if word == otherWord {
+						overlap++
+						break
+					}
+				}
+			}
+		}
+
+		similarity := float64(overlap) / float64(len(outputWords))
+		totalSimilarity += similarity
+		comparisons++
+	}
+
+	if comparisons == 0 {
+		return 0.5
+	}
+
+	avgSimilarity := totalSimilarity / float64(comparisons)
+	uniqueness := 1.0 - avgSimilarity
+
+	// Reward moderate uniqueness (not too similar, not completely different)
+	if uniqueness >= 0.3 && uniqueness <= 0.8 {
+		return uniqueness
+	} else if uniqueness < 0.3 {
+		return uniqueness * 0.7 // Penalty for being too similar
+	} else {
+		return 0.5 + (1.0-uniqueness)*0.5 // Slight penalty for being too different
+	}
+}
+
+func generateScoreReasoning(response AIResult, score float64) string {
+	if response.Error != "" {
+		return "Error in response"
+	}
+
+	reasons := []string{}
+
+	if score >= 0.8 {
+		reasons = append(reasons, "excellent quality")
+	} else if score >= 0.6 {
+		reasons = append(reasons, "good quality")
+	} else if score >= 0.4 {
+		reasons = append(reasons, "fair quality")
+	} else {
+		reasons = append(reasons, "needs improvement")
+	}
+
+	if response.Confidence >= 0.8 {
+		reasons = append(reasons, "high confidence")
+	} else if response.Confidence >= 0.6 {
+		reasons = append(reasons, "moderate confidence")
+	}
+
+	length := len(strings.TrimSpace(response.Output))
+	if length >= 200 && length <= 800 {
+		reasons = append(reasons, "optimal length")
+	} else if length < 100 {
+		reasons = append(reasons, "too brief")
+	} else if length > 1000 {
+		reasons = append(reasons, "verbose")
+	}
+
+	return strings.Join(reasons, ", ")
+}
+
+func generateEvaluationReasoning(bestResponse AIResult, score float64) string {
+	model := bestResponse.Model
+	confidence := bestResponse.Confidence
+	length := len(strings.TrimSpace(bestResponse.Output))
+
+	var quality string
+	if score >= 0.8 {
+		quality = "exceptional"
+	} else if score >= 0.7 {
+		quality = "high"
+	} else if score >= 0.6 {
+		quality = "good"
+	} else {
+		quality = "acceptable"
+	}
+
+	return fmt.Sprintf("%s provided the best response with %s quality (score: %.2f). The response demonstrates confidence (%.2f), appropriate length (%d chars), and strong content quality.",
+		model, quality, score, confidence, length)
 }
 
 func processQuery(ctx context.Context, query string, agents []Agent) ([]AIResult, *MasterEvaluation) {
@@ -522,7 +916,7 @@ func main() {
 		}
 
 		// Create context with timeout (increased for master evaluation)
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 
 		// Process the query with agents or master-only

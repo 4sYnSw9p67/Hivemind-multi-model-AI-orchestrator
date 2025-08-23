@@ -161,7 +161,10 @@ export class MainChatComponent implements AfterViewChecked {
           html += `<span class="confidence">Confidence: ${(result.confidence * 100).toFixed(1)}%</span>`;
         }
         if (ranking) {
-          html += ` | <span class="ranking">Score: ${(ranking.score * 100).toFixed(0)}/100</span>`;
+          html += ` | <span class="ranking">Score: ${(ranking.score * 100).toFixed(1)}/100</span>`;
+          if (ranking.reasoning && masterEvaluation && ranking.reasoning !== `Ranked #${masterEvaluation.rankings.findIndex(r => r.index === index) + 1} by master evaluation`) {
+            html += ` <span class="ranking-detail">(${ranking.reasoning})</span>`;
+          }
         }
         html += `</div>`;
       }
