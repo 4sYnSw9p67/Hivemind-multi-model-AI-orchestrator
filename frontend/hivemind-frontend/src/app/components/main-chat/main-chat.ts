@@ -165,23 +165,15 @@ export class MainChatComponent implements AfterViewChecked {
         let cleanOutput = result.output || '';
         cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-        // For individual worker responses, just clean and display (no markdown processing here)
-        // The right panel should show the exact original responses
-        if (this.hasMarkdown(cleanOutput)) {
-          const markdownHtml = typeof marked.parse === 'function'
-            ? marked.parse(cleanOutput, { async: false }) as string
-            : marked(cleanOutput) as string;
-          html += `<div class="response-content markdown-content">${markdownHtml}</div>`;
-        } else {
-          // Escape HTML for plain text to prevent XSS
-          const escapedOutput = cleanOutput
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-          html += `<div class="response-content">${escapedOutput}</div>`;
-        }
+        // Store raw content for processing in the middle chat panel
+        // Escape HTML entities to prevent XSS but preserve for markdown processing
+        const escapedOutput = cleanOutput
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+        html += `<div class="response-content" data-raw-content="${encodeURIComponent(cleanOutput)}">${escapedOutput}</div>`;
 
         html += `<div class="response-metadata">`;
         if (result.confidence) {
@@ -245,25 +237,21 @@ export class MainChatComponent implements AfterViewChecked {
 
   // Process content specifically for middle chat panel display
   processMiddleChatContent(htmlContent: string): string {
-    // Look for response-content divs and process their markdown
-    const responseContentPattern = /<div class="response-content[^"]*">([\s\S]*?)<\/div>/g;
+    // Look for response-content divs with raw content data
+    const responseContentPattern = /<div class="response-content"[^>]*data-raw-content="([^"]*)"[^>]*>[\s\S]*?<\/div>/g;
     let processedHtml = htmlContent;
 
     let match;
     while ((match = responseContentPattern.exec(htmlContent)) !== null) {
       const originalDiv = match[0];
-      const contentInsideDiv = match[1];
+      const rawContentEncoded = match[1];
 
-      // Decode HTML entities first
-      const decodedContent = contentInsideDiv
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
+      // Decode the raw content
+      const rawContent = decodeURIComponent(rawContentEncoded);
 
       // Process any markdown content (both regular and nested)
-      const processedMarkdown = this.processNestedMarkdown(decodedContent);
+      const processedMarkdown = this.processNestedMarkdown(rawContent);
+
       const newMarkdownHtml = typeof marked.parse === 'function'
         ? marked.parse(processedMarkdown, { async: false }) as string
         : marked(processedMarkdown) as string;
