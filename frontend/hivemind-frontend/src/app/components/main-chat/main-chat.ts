@@ -10,6 +10,7 @@ export interface ChatMessage {
   id: string;
   sender: string;
   content: string;
+  contentHtml?: SafeHtml;
   timestamp: Date;
   type: 'user' | 'assistant' | 'system';
 }
@@ -70,10 +71,15 @@ export class MainChatComponent implements AfterViewChecked {
       next: (response) => {
         this.isLoading = false;
 
+        // Process the response for the middle chat panel (with nested markdown handling)
+        const rawResponse = this.formatResponse(response.results, response.masterEvaluation);
+        const processedResponse = this.processMiddleChatContent(rawResponse);
+
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
           sender: 'Hivemind',
-          content: this.formatResponse(response.results, response.masterEvaluation),
+          content: rawResponse,
+          contentHtml: this.sanitizer.bypassSecurityTrustHtml(processedResponse),
           timestamp: new Date(),
           type: 'assistant'
         };
@@ -159,14 +165,22 @@ export class MainChatComponent implements AfterViewChecked {
         let cleanOutput = result.output || '';
         cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-        // Check if response contains markdown and render accordingly
+        // For individual worker responses, just clean and display (no markdown processing here)
+        // The right panel should show the exact original responses
         if (this.hasMarkdown(cleanOutput)) {
           const markdownHtml = typeof marked.parse === 'function'
             ? marked.parse(cleanOutput, { async: false }) as string
             : marked(cleanOutput) as string;
           html += `<div class="response-content markdown-content">${markdownHtml}</div>`;
         } else {
-          html += `<div class="response-content">${cleanOutput}</div>`;
+          // Escape HTML for plain text to prevent XSS
+          const escapedOutput = cleanOutput
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+          html += `<div class="response-content">${escapedOutput}</div>`;
         }
 
         html += `<div class="response-metadata">`;
@@ -227,6 +241,70 @@ export class MainChatComponent implements AfterViewChecked {
     ];
 
     return markdownPatterns.some(pattern => pattern.test(content));
+  }
+
+  // Process content specifically for middle chat panel display
+  processMiddleChatContent(htmlContent: string): string {
+    // Look for response-content divs and process their markdown
+    const responseContentPattern = /<div class="response-content[^"]*">([\s\S]*?)<\/div>/g;
+    let processedHtml = htmlContent;
+
+    let match;
+    while ((match = responseContentPattern.exec(htmlContent)) !== null) {
+      const originalDiv = match[0];
+      const contentInsideDiv = match[1];
+
+      // Decode HTML entities first
+      const decodedContent = contentInsideDiv
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+
+      // Process any markdown content (both regular and nested)
+      const processedMarkdown = this.processNestedMarkdown(decodedContent);
+      const newMarkdownHtml = typeof marked.parse === 'function'
+        ? marked.parse(processedMarkdown, { async: false }) as string
+        : marked(processedMarkdown) as string;
+
+      const newDiv = `<div class="response-content markdown-content">${newMarkdownHtml}</div>`;
+      processedHtml = processedHtml.replace(originalDiv, newDiv);
+    }
+
+    return processedHtml;
+  }
+
+  // Check specifically for nested markdown patterns
+  hasNestedMarkdown(content: string): boolean {
+    return /```markdown\s*[\s\S]*?\s*```/.test(content);
+  }
+
+  // Process nested markdown content properly
+  processNestedMarkdown(content: string): string {
+    let processedContent = content;
+
+    // Case 1: Extract content from outer ```markdown ... ``` blocks
+    const outerMarkdownPattern = /```markdown\s*([\s\S]*?)\s*```/g;
+    let match;
+    while ((match = outerMarkdownPattern.exec(content)) !== null) {
+      const innerMarkdown = match[1];
+      // Replace the outer markdown block with just the inner content
+      processedContent = processedContent.replace(match[0], innerMarkdown);
+    }
+
+    // Case 2: Handle mixed content (text + markdown block)
+    // Look for pattern: "Some text:\n\n```markdown\n# Content\n```"
+    const mixedPattern = /([\s\S]*?)\n\n```markdown\s*([\s\S]*?)\s*```([\s\S]*)/;
+    const mixedMatch = processedContent.match(mixedPattern);
+    if (mixedMatch) {
+      const [, beforeText, markdownContent, afterText] = mixedMatch;
+      processedContent = beforeText.trim() + '\n\n' + markdownContent.trim() + '\n\n' + afterText.trim();
+    }
+
+    // If no nested markdown patterns were found, return the original content
+    // This ensures regular markdown still gets processed
+    return processedContent.trim();
   }
 
   // Clean Qwen thinking tags

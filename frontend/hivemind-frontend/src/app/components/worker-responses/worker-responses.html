@@ -140,7 +140,7 @@
           
           <!-- Success State -->
           <div *ngIf="!response.error" class="success-content">
-            <div class="content-text" [innerHTML]="formatResponse(response.output || '')"></div>
+            <div class="content-text" style="white-space: pre-wrap; font-family: monospace;">{{ response.output || '' }}</div>
           </div>
         </div>
         

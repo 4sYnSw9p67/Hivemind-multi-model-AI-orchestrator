@@ -82,7 +82,7 @@
             </div>
             
             <div class="message-body">
-              <div class="message-text" [innerHTML]="message.content"></div>
+              <div class="message-text" [innerHTML]="message.contentHtml || message.content"></div>
             </div>
           </div>
         </div>
