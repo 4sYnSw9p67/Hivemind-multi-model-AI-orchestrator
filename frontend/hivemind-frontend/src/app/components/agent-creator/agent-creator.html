@@ -20,13 +20,14 @@
           Agent Name
           <span class="required">*</span>
         </label>
-        <input 
-          id="agent-name"
-          type="text" 
-          [(ngModel)]="newAgent.name" 
-          placeholder="e.g., Code Helper, Research Assistant"
-          class="form-control"
-        />
+        <div class="select-wrapper">
+          <select id="agent-name" [(ngModel)]="newAgent.name" class="form-control">
+            <option *ngFor="let name of getAvailableNames()" [value]="name">{{ name }}</option>
+          </select>
+          <svg class="select-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </div>
       </div>
       
       <div class="form-group">
@@ -36,11 +37,7 @@
         </label>
         <div class="select-wrapper">
           <select id="agent-model" [(ngModel)]="newAgent.model" class="form-control">
-            <option value="">Choose a model</option>
-            <option value="gpt-4">GPT-4</option>
-            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-            <option value="llama-3.1">LLaMA 3.1</option>
-            <option value="deepseek-coder">DeepSeek Coder</option>
+            <option value="qwen">Qwen (Local)</option>
           </select>
           <svg class="select-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 10l5 5 5-5z"/>
@@ -59,6 +56,72 @@
           class="form-control"
           rows="3"
         ></textarea>
+      </div>
+
+      <!-- Worker Parameters -->
+      <div class="parameters-section">
+        <h4 class="parameters-title">Worker Parameters</h4>
+        <div class="parameters-grid">
+          <div class="param-group">
+            <label for="temperature" class="param-label">
+              Temperature
+              <span class="param-value">{{ newAgent.temperature }}</span>
+            </label>
+            <input 
+              id="temperature"
+              type="range" 
+              [(ngModel)]="newAgent.temperature"
+              min="0.1"
+              max="1.5"
+              step="0.1"
+              class="param-slider"
+            />
+            <div class="param-range">
+              <span>0.1 (Conservative)</span>
+              <span>1.5 (Creative)</span>
+            </div>
+          </div>
+
+          <div class="param-group">
+            <label for="top_k" class="param-label">
+              Top K
+              <span class="param-value">{{ newAgent.top_k }}</span>
+            </label>
+            <input 
+              id="top_k"
+              type="range" 
+              [(ngModel)]="newAgent.top_k"
+              min="10"
+              max="100"
+              step="5"
+              class="param-slider"
+            />
+            <div class="param-range">
+              <span>10 (Focused)</span>
+              <span>100 (Diverse)</span>
+            </div>
+          </div>
+
+          <div class="param-group">
+            <label for="top_p" class="param-label">
+              Top P
+              <span class="param-value">{{ newAgent.top_p }}</span>
+            </label>
+            <input 
+              id="top_p"
+              type="range" 
+              [(ngModel)]="newAgent.top_p"
+              min="0.1"
+              max="1.0"
+              step="0.05"
+              class="param-slider"
+            />
+            <div class="param-range">
+              <span>0.1 (Precise)</span>
+              <span>1.0 (Exploratory)</span>
+            </div>
+          </div>
+        </div>
       </div>
       
       <button 
@@ -121,6 +184,11 @@
           <h4 class="agent-name">{{ agent.name }}</h4>
           <div class="agent-model">
             <span class="model-badge">{{ getModelDisplayName(agent.model) }}</span>
+          </div>
+          <div class="agent-params">
+            <span class="param-chip">T: {{ agent.workerParams.temperature }}</span>
+            <span class="param-chip">K: {{ agent.workerParams.top_k }}</span>
+            <span class="param-chip">P: {{ agent.workerParams.top_p }}</span>
           </div>
           <p class="agent-description" *ngIf="agent.specialization">
             {{ agent.specialization }}

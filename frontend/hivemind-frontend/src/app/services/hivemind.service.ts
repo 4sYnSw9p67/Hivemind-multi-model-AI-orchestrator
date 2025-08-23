@@ -56,16 +56,26 @@ export class HivemindService {
         private apiKeysService: ApiKeysService
     ) { }
 
-    sendQuery(query: string): Observable<HivemindResponse> {
+    sendQuery(query: string, agents: any[] = []): Observable<HivemindResponse> {
         // Try backend first, then fallback to direct API calls
-        return this.tryBackend(query).pipe(
+        return this.tryBackend(query, agents).pipe(
             catchError(() => this.callApisDirectly(query))
         );
     }
 
-    private tryBackend(query: string): Observable<HivemindResponse> {
+    private tryBackend(query: string, agents: any[] = []): Observable<HivemindResponse> {
         return this.http.post<HivemindResponse>(this.backendUrl, {
-            query
+            query,
+            agents: agents.map(agent => ({
+                name: agent.name,
+                specialization: agent.specialization || '',
+                workerParams: {
+                    temperature: agent.workerParams.temperature,
+                    top_k: agent.workerParams.top_k,
+                    top_p: agent.workerParams.top_p,
+                    worker_id: agent.name
+                }
+            }))
         }).pipe(
             catchError((error) => {
                 console.log('Qwen backend not available, falling back to direct API calls');

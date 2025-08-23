@@ -61,7 +61,7 @@ export class MainChatComponent implements AfterViewChecked {
     this.isLoading = true;
     this.now = new Date();
 
-    this.hivemindService.sendQuery(query).subscribe({
+    this.hivemindService.sendQuery(query, this.activeAgents).subscribe({
       next: (response) => {
         this.isLoading = false;
 

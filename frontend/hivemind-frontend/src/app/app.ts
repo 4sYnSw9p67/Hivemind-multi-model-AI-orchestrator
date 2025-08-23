@@ -92,7 +92,12 @@ export class App implements OnInit {
           name,
           model,
           specialization: `AI assistant powered by ${name.split(' ')[0]}`,
-          isActive: true
+          isActive: true,
+          workerParams: {
+            temperature: 0.7,
+            top_k: 40,
+            top_p: 0.8
+          }
         };
 
         this.activeAgents.push(agent);
