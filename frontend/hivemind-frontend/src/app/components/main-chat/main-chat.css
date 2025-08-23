@@ -72,7 +72,7 @@
   background: var(--bg-primary);
   min-height: 0;
   max-height: calc(100vh - 140px); /* Account for header + input */
-  padding-bottom: 40px; /* Space for input so it doesn't get pushed */
+  padding-bottom: 80px; /* Space for input so it doesn't get pushed */
 }
 
 .messages-content {
@@ -489,7 +489,7 @@
 /* Chat Input - Only in Middle Panel */
 .chat-input {
   position: absolute;
-  bottom: 0;
+  bottom: 20px; /* Slight offset from very bottom */
   left: 0;
   right: 0;
   z-index: 10;
