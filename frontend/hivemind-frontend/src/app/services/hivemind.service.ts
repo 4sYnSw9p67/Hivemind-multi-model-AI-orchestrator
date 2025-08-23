@@ -69,6 +69,7 @@ export class HivemindService {
             agents: agents.map(agent => ({
                 name: agent.name,
                 specialization: agent.specialization || '',
+                responseLength: agent.responseLength || 'unlimited',
                 workerParams: {
                     temperature: agent.workerParams.temperature,
                     top_k: agent.workerParams.top_k,

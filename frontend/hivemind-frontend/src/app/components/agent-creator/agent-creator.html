@@ -48,14 +48,55 @@
       <div class="form-group">
         <label for="agent-specialization" class="form-label">
           Specialization
+          <span class="required">*</span>
         </label>
-        <textarea 
-          id="agent-specialization"
-          [(ngModel)]="newAgent.specialization"
-          placeholder="Describe what this agent specializes in..."
-          class="form-control"
-          rows="3"
-        ></textarea>
+        <div class="select-wrapper">
+          <select id="agent-specialization" [(ngModel)]="newAgent.specialization" (change)="onSpecializationChange()" class="form-control">
+            <option *ngFor="let spec of getAvailableSpecializations()" [value]="spec.description">
+              {{ spec.name }}
+            </option>
+            <option value="custom">Custom Specialization...</option>
+          </select>
+          <svg class="select-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </div>
+        
+        <!-- Custom specialization textarea -->
+        <div class="form-group mt-3" *ngIf="isCustomSpecialization">
+          <label for="custom-specialization" class="form-label">
+            Custom Specialization
+          </label>
+          <textarea 
+            id="custom-specialization"
+            [(ngModel)]="newAgent.customSpecialization"
+            placeholder="Describe your custom specialization approach..."
+            class="form-control"
+            rows="3"
+          ></textarea>
+        </div>
+        
+        <!-- Specialization description -->
+        <div class="specialization-description" *ngIf="!isCustomSpecialization && newAgent.specialization">
+          <small class="text-muted">{{ newAgent.specialization }}</small>
+        </div>
+      </div>
+
+      <!-- Response Length Control -->
+      <div class="form-group">
+        <label for="response-length" class="form-label">
+          Response Length
+        </label>
+        <div class="select-wrapper">
+          <select id="response-length" [(ngModel)]="newAgent.responseLength" class="form-control">
+            <option *ngFor="let option of responseLengthOptions" [value]="option.value">
+              {{ option.label }} - {{ option.description }}
+            </option>
+          </select>
+          <svg class="select-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </div>
       </div>
 
       <!-- Worker Parameters -->
@@ -189,6 +230,7 @@
             <span class="param-chip">T: {{ agent.workerParams.temperature }}</span>
             <span class="param-chip">K: {{ agent.workerParams.top_k }}</span>
             <span class="param-chip">P: {{ agent.workerParams.top_p }}</span>
+            <span class="param-chip length-chip">{{ getResponseLengthLabel(agent.responseLength) }}</span>
           </div>
           <p class="agent-description" *ngIf="agent.specialization">
             {{ agent.specialization }}

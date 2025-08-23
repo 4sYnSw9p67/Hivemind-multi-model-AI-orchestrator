@@ -92,6 +92,7 @@ export class App implements OnInit {
           name,
           model,
           specialization: `AI assistant powered by ${name.split(' ')[0]}`,
+          responseLength: 'unlimited',
           isActive: true,
           workerParams: {
             temperature: 0.7,

@@ -512,3 +512,53 @@
   background: var(--neutral-800);
   color: var(--text-tertiary);
 }
+
+/* Specialization and Response Length Styling */
+.specialization-description {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--brand-primary);
+}
+
+.specialization-description small {
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.mt-3 {
+  margin-top: var(--space-3);
+}
+
+.length-chip {
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  font-weight: 600;
+}
+
+:root[data-theme="dark"] .length-chip {
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+}
+
+/* Form group spacing improvements */
+.form-group + .form-group {
+  margin-top: var(--space-4);
+}
+
+.form-group + .parameters-section {
+  margin-top: var(--space-6);
+}
+
+/* Nested form group (custom specialization) */
+.form-group .form-group {
+  margin-top: var(--space-3);
+  margin-bottom: 0;
+}
+
+/* Enhanced select wrapper for longer options */
+.form-control option {
+  padding: var(--space-2);
+  line-height: 1.4;
+}

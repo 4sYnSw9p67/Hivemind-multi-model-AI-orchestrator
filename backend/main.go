@@ -44,6 +44,7 @@ type QueryRequest struct {
 type Agent struct {
 	Name           string       `json:"name"`
 	Specialization string       `json:"specialization"`
+	ResponseLength string       `json:"responseLength"`
 	WorkerParams   WorkerParams `json:"workerParams"`
 }
 
@@ -849,12 +850,8 @@ func processQuery(ctx context.Context, query string, agents []Agent) ([]AIResult
 			params := agentConfig.WorkerParams
 			params.WorkerID = agentConfig.Name
 
-			// Add specialization to the query if provided
-			workerQuery := query
-			if strings.TrimSpace(agentConfig.Specialization) != "" {
-				workerQuery = fmt.Sprintf("Context: You are specialized in %s.\n\nUser Query: %s",
-					agentConfig.Specialization, query)
-			}
+			// Build enhanced prompt with specialization and response length
+			workerQuery := buildWorkerPrompt(query, agentConfig)
 
 			// Call Qwen with agent-specific parameters
 			result := callQwenWorker(ctx, workerQuery, params)
@@ -869,6 +866,42 @@ func processQuery(ctx context.Context, query string, agents []Agent) ([]AIResult
 	evaluation := evaluateResponses(ctx, query, results)
 
 	return results, evaluation
+}
+
+func buildWorkerPrompt(query string, agent Agent) string {
+	var promptParts []string
+
+	// Add specialization context if provided
+	if strings.TrimSpace(agent.Specialization) != "" {
+		specialization := fmt.Sprintf("Role: %s", agent.Specialization)
+		promptParts = append(promptParts, specialization)
+	}
+
+	// Add response length instructions
+	lengthInstructions := getResponseLengthInstructions(agent.ResponseLength)
+	if lengthInstructions != "" {
+		promptParts = append(promptParts, lengthInstructions)
+	}
+
+	// Add the actual query
+	promptParts = append(promptParts, fmt.Sprintf("Query: %s", query))
+
+	return strings.Join(promptParts, "\n\n")
+}
+
+func getResponseLengthInstructions(responseLength string) string {
+	switch responseLength {
+	case "brief":
+		return "Response Length: Provide a brief response (1-2 sentences) focusing only on the key points."
+	case "detailed":
+		return "Response Length: Provide a detailed response (1-2 paragraphs) with explanation and context."
+	case "comprehensive":
+		return "Response Length: Provide a comprehensive response with full analysis, examples, and thorough explanation."
+	case "unlimited":
+		fallthrough
+	default:
+		return "Response Length: Provide a response of appropriate length for the query complexity."
+	}
 }
 
 func main() {
