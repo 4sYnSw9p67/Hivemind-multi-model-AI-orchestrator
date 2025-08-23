@@ -318,9 +318,11 @@ func evaluateResponses(ctx context.Context, query string, responses []AIResult) 
 }
 
 func buildEvaluationPrompt(query string, responses []AIResult) string {
-	prompt := fmt.Sprintf(`As a master AI evaluator, analyze these responses to the query: "%s"
+	prompt := fmt.Sprintf(`You are an expert AI evaluator tasked with objectively assessing response quality. Your evaluation should prioritize practical value and correctness over style or creativity.
 
-Responses:
+QUERY: "%s"
+
+RESPONSES TO EVALUATE:
 `, query)
 
 	for i, resp := range responses {
@@ -331,14 +333,23 @@ Responses:
 	}
 
 	prompt += `
-Please evaluate these responses and provide:
-1. Which response is best (number 1-` + fmt.Sprintf("%d", len(responses)) + `)
-2. Brief reasoning for your choice
-3. Rank all responses from best to worst
+EVALUATION CRITERIA (in order of importance):
+1. CORRECTNESS: Is the information accurate and factually correct?
+2. COMPLETENESS: Does it fully address the user's question?
+3. CLARITY: Is it easy to understand and well-structured?
+4. PRACTICAL VALUE: Is it actionable and useful for the user?
+5. EFFICIENCY: Does it provide the solution in an appropriate, concise manner?
 
-Format your response as:
-BEST: [number]
-REASONING: [brief explanation]
+IMPORTANT GUIDELINES:
+- Prioritize substance over style (correct information > creative presentation)
+- Value complete, working solutions over partial or incomplete ones
+- Consider real-world applicability and reliability
+- Avoid bias toward flashy or creative elements unless they add genuine value
+- Focus on what would be most helpful to someone trying to solve this problem
+
+FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
+BEST: [number from 1-` + fmt.Sprintf("%d", len(responses)) + `]
+REASONING: [objective explanation focusing on the criteria above]
 RANKINGS: [comma-separated list from best to worst, e.g., "2,1,3"]`
 
 	return prompt

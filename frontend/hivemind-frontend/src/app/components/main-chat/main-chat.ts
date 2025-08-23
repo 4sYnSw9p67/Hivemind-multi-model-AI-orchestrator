@@ -2,6 +2,8 @@ import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterVie
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HivemindService, MasterEvaluation, ModelResponse } from '../../services/hivemind.service';
+import { marked } from 'marked';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Agent } from '../agent-creator/agent-creator';
 
 export interface ChatMessage {
@@ -38,7 +40,10 @@ export class MainChatComponent implements AfterViewChecked {
   isLoading = false;
   now = new Date();
 
-  constructor(private hivemindService: HivemindService) { }
+  constructor(
+    private hivemindService: HivemindService,
+    private sanitizer: DomSanitizer
+  ) { }
 
   ngAfterViewChecked() {
     this.scrollToBottom();
@@ -154,7 +159,15 @@ export class MainChatComponent implements AfterViewChecked {
         let cleanOutput = result.output || '';
         cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-        html += `<div class="response-content">${cleanOutput}</div>`;
+        // Check if response contains markdown and render accordingly
+        if (this.hasMarkdown(cleanOutput)) {
+          const markdownHtml = typeof marked.parse === 'function'
+            ? marked.parse(cleanOutput, { async: false }) as string
+            : marked(cleanOutput) as string;
+          html += `<div class="response-content markdown-content">${markdownHtml}</div>`;
+        } else {
+          html += `<div class="response-content">${cleanOutput}</div>`;
+        }
 
         html += `<div class="response-metadata">`;
         if (result.confidence) {
@@ -188,6 +201,37 @@ export class MainChatComponent implements AfterViewChecked {
 
     html += '</div>';
     return html;
+  }
+
+  // Convert markdown to safe HTML
+  renderMarkdown(content: string): SafeHtml {
+    const cleanContent = this.cleanThinkTags(content);
+    // Use synchronous parsing for immediate rendering
+    const htmlContent = typeof marked.parse === 'function'
+      ? marked.parse(cleanContent, { async: false }) as string
+      : marked(cleanContent) as string;
+    return this.sanitizer.bypassSecurityTrustHtml(htmlContent);
+  }
+
+  // Check if content likely contains markdown
+  hasMarkdown(content: string): boolean {
+    const markdownPatterns = [
+      /```[\s\S]*?```/,           // Code blocks
+      /`[^`\n]+`/,                // Inline code
+      /^\s*#{1,6}\s/m,            // Headers
+      /^\s*\*\s+/m,               // Bullet lists
+      /^\s*\d+\.\s+/m,            // Numbered lists
+      /\*\*[^*]+\*\*/,            // Bold
+      /\*[^*]+\*/,                // Italic
+      /\[[^\]]+\]\([^)]+\)/       // Links
+    ];
+
+    return markdownPatterns.some(pattern => pattern.test(content));
+  }
+
+  // Clean Qwen thinking tags
+  cleanThinkTags(content: string): string {
+    return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   }
 
   private scrollToBottom() {
