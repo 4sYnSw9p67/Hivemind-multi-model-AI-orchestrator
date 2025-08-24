@@ -13,7 +13,7 @@ import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-csharp';
-import 'prismjs/components/prism-php';
+
 import 'prismjs/components/prism-ruby';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-rust';
@@ -103,10 +103,8 @@ export class MainChatComponent implements AfterViewChecked {
 
         this.messages.push(assistantMessage);
 
-        // Apply syntax highlighting after DOM update
-        setTimeout(() => {
-          this.applySyntaxHighlighting();
-        }, 0);
+        // Apply syntax highlighting after DOM update with multiple attempts
+        this.applySyntaxHighlightingWithRetry();
 
         this.messageProcessed.emit({ query, results: response.results });
       },
@@ -351,59 +349,104 @@ export class MainChatComponent implements AfterViewChecked {
     return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   }
 
+  // Apply syntax highlighting with retry mechanism
+  applySyntaxHighlightingWithRetry(attempt: number = 1, maxAttempts: number = 5): void {
+    const codeBlockCount = document.querySelectorAll('.message-text pre code').length;
+
+    if (codeBlockCount > 0) {
+      // Found code blocks, apply highlighting
+      this.applySyntaxHighlighting();
+    } else if (attempt < maxAttempts) {
+      // No code blocks found yet, retry with increasing delay
+      const delay = attempt * 100; // 100ms, 200ms, 300ms, etc.
+      setTimeout(() => {
+        this.applySyntaxHighlightingWithRetry(attempt + 1, maxAttempts);
+      }, delay);
+    } else {
+      console.warn('⚠️ No code blocks found after', maxAttempts, 'attempts');
+    }
+  }
+
   // Apply Prism.js syntax highlighting to code blocks
   applySyntaxHighlighting(): void {
     try {
-      // Find all code blocks in the chat messages
-      const codeBlocks = document.querySelectorAll('.message-text pre code[class*="language-"]');
+      const allCodeBlocks = document.querySelectorAll('.message-text pre code');
+      let highlightedCount = 0;
 
-      // Apply highlighting to each code block
-      codeBlocks.forEach((block) => {
+      allCodeBlocks.forEach((block, index) => {
         if (!block.classList.contains('highlighted')) {
-          Prism.highlightElement(block as HTMLElement);
-          block.classList.add('highlighted'); // Prevent re-highlighting
-        }
-      });
+          // Check if it already has a language class
+          const hasLanguageClass = block.className.includes('language-');
 
-      // Also highlight any code blocks without specific language classes
-      const genericCodeBlocks = document.querySelectorAll('.message-text pre code:not([class*="language-"])');
-      genericCodeBlocks.forEach((block) => {
-        if (!block.classList.contains('highlighted')) {
-          // Try to detect language from content
-          const codeContent = block.textContent || '';
-          let detectedLang = this.detectCodeLanguage(codeContent);
+          if (!hasLanguageClass) {
+            // Try to detect language from content
+            const codeContent = block.textContent || '';
+            const detectedLang = this.detectCodeLanguage(codeContent);
 
-          if (detectedLang && Prism.languages[detectedLang]) {
-            block.className = `language-${detectedLang}`;
-            Prism.highlightElement(block as HTMLElement);
-            block.classList.add('highlighted');
+            if (detectedLang && Prism.languages[detectedLang]) {
+              block.className = `language-${detectedLang}`;
+            } else {
+              block.className = 'language-none';
+            }
           }
+
+          // Apply Prism highlighting
+          if (block.className.includes('language-') && !block.className.includes('language-none')) {
+            try {
+              Prism.highlightElement(block as HTMLElement);
+              highlightedCount++;
+            } catch (err) {
+              console.warn(`Failed to highlight code block:`, err);
+            }
+          }
+
+          // Mark as processed
+          block.classList.add('highlighted');
         }
       });
+
+      if (highlightedCount > 0) {
+        console.log(`✅ Applied syntax highlighting to ${highlightedCount} code blocks`);
+      }
     } catch (error) {
       console.warn('Prism highlighting failed:', error);
     }
   }
 
-  // Simple language detection based on code patterns
+  // Enhanced language detection based on code patterns
   detectCodeLanguage(code: string): string | null {
+    // Clean up the code for better detection
+    const cleanCode = code.trim();
+
     const patterns = [
-      { lang: 'javascript', regex: /\b(const|let|var|function|=>|require\(|console\.log)\b/ },
-      { lang: 'typescript', regex: /\b(interface|type|implements|extends|private|public)\b/ },
-      { lang: 'python', regex: /\b(def|import|from|print\(|if __name__|class)\b/ },
+      // Bash/Shell - check first since npm commands are common
+      { lang: 'bash', regex: /\b(npm|node|echo|cd|ls|grep|curl|git|chmod|mkdir|rm|cp|mv|cat|sudo|apt|yum|brew)\b/ },
+      { lang: 'bash', regex: /^[\$#]\s+/ }, // Shell prompts
+
+      // JavaScript/Node.js - enhanced patterns
+      { lang: 'javascript', regex: /\b(const|let|var|function|=>|require\(|console\.log|express|app\.get|app\.listen)\b/ },
+      { lang: 'javascript', regex: /\b(npm|yarn|webpack|babel|react|vue|angular)\b/ },
+
+      // TypeScript
+      { lang: 'typescript', regex: /\b(interface|type|implements|extends|private|public|readonly)\b/ },
+
+      // Python
+      { lang: 'python', regex: /\b(def|import|from|print\(|if __name__|class|pip|python)\b/ },
+
+      // Other languages
       { lang: 'java', regex: /\b(public class|private|protected|static|void|System\.out)\b/ },
       { lang: 'csharp', regex: /\b(using|namespace|public class|private|Console\.WriteLine)\b/ },
-      { lang: 'php', regex: /(<\?php|\$\w+|echo|function\s+\w+\()/ },
       { lang: 'go', regex: /\b(package|func|import|fmt\.Print|var|:=)\b/ },
       { lang: 'rust', regex: /\b(fn|let|mut|pub|use|println!)\b/ },
       { lang: 'sql', regex: /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|CREATE|TABLE)\b/i },
-      { lang: 'bash', regex: /\b(echo|cd|ls|grep|curl|npm|node|git)\b/ },
       { lang: 'json', regex: /^\s*[\{\[].*[\}\]]\s*$/s },
-      { lang: 'yaml', regex: /^\s*\w+:\s*\w+/m }
+      { lang: 'yaml', regex: /^\s*\w+:\s*\w+/m },
+      { lang: 'html', regex: /<[^>]+>/ },
+      { lang: 'css', regex: /\{[^}]*\}/ }
     ];
 
     for (const pattern of patterns) {
-      if (pattern.regex.test(code)) {
+      if (pattern.regex.test(cleanCode)) {
         return pattern.lang;
       }
     }
