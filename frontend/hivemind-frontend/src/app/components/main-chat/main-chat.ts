@@ -351,58 +351,59 @@ export class MainChatComponent implements AfterViewChecked {
 
   // Apply syntax highlighting with retry mechanism
   applySyntaxHighlightingWithRetry(attempt: number = 1, maxAttempts: number = 5): void {
-    const codeBlockCount = document.querySelectorAll('.message-text pre code').length;
+    // Look specifically for UNPROCESSED code blocks
+    const unprocessedCodeBlocks = document.querySelectorAll('.message-text pre code:not(.highlighted)');
 
-    if (codeBlockCount > 0) {
-      // Found code blocks, apply highlighting
+    if (unprocessedCodeBlocks.length > 0) {
+      // Found unprocessed code blocks, apply highlighting
+      console.log(`🎨 Found ${unprocessedCodeBlocks.length} new code blocks to highlight`);
       this.applySyntaxHighlighting();
     } else if (attempt < maxAttempts) {
-      // No code blocks found yet, retry with increasing delay
+      // No unprocessed code blocks found yet, retry with increasing delay
       const delay = attempt * 100; // 100ms, 200ms, 300ms, etc.
       setTimeout(() => {
         this.applySyntaxHighlightingWithRetry(attempt + 1, maxAttempts);
       }, delay);
     } else {
-      console.warn('⚠️ No code blocks found after', maxAttempts, 'attempts');
+      console.warn('⚠️ No new code blocks found after', maxAttempts, 'attempts');
     }
   }
 
   // Apply Prism.js syntax highlighting to code blocks
   applySyntaxHighlighting(): void {
     try {
-      const allCodeBlocks = document.querySelectorAll('.message-text pre code');
+      // Only process unprocessed code blocks for efficiency
+      const unprocessedCodeBlocks = document.querySelectorAll('.message-text pre code:not(.highlighted)');
       let highlightedCount = 0;
 
-      allCodeBlocks.forEach((block, index) => {
-        if (!block.classList.contains('highlighted')) {
-          // Check if it already has a language class
-          const hasLanguageClass = block.className.includes('language-');
+      unprocessedCodeBlocks.forEach((block) => {
+        // Check if it already has a language class
+        const hasLanguageClass = block.className.includes('language-');
 
-          if (!hasLanguageClass) {
-            // Try to detect language from content
-            const codeContent = block.textContent || '';
-            const detectedLang = this.detectCodeLanguage(codeContent);
+        if (!hasLanguageClass) {
+          // Try to detect language from content
+          const codeContent = block.textContent || '';
+          const detectedLang = this.detectCodeLanguage(codeContent);
 
-            if (detectedLang && Prism.languages[detectedLang]) {
-              block.className = `language-${detectedLang}`;
-            } else {
-              block.className = 'language-none';
-            }
+          if (detectedLang && Prism.languages[detectedLang]) {
+            block.className = `language-${detectedLang}`;
+          } else {
+            block.className = 'language-none';
           }
-
-          // Apply Prism highlighting
-          if (block.className.includes('language-') && !block.className.includes('language-none')) {
-            try {
-              Prism.highlightElement(block as HTMLElement);
-              highlightedCount++;
-            } catch (err) {
-              console.warn(`Failed to highlight code block:`, err);
-            }
-          }
-
-          // Mark as processed
-          block.classList.add('highlighted');
         }
+
+        // Apply Prism highlighting
+        if (block.className.includes('language-') && !block.className.includes('language-none')) {
+          try {
+            Prism.highlightElement(block as HTMLElement);
+            highlightedCount++;
+          } catch (err) {
+            console.warn(`Failed to highlight code block:`, err);
+          }
+        }
+
+        // Mark as processed
+        block.classList.add('highlighted');
       });
 
       if (highlightedCount > 0) {
