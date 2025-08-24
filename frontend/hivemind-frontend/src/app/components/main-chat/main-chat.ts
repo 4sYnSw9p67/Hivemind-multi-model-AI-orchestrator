@@ -13,7 +13,6 @@ import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-csharp';
-
 import 'prismjs/components/prism-ruby';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-rust';
@@ -22,6 +21,18 @@ import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-markdown';
+
+// Additional languages (only ones that definitely exist)
+import 'prismjs/components/prism-elixir';
+import 'prismjs/components/prism-kotlin';
+import 'prismjs/components/prism-swift';
+import 'prismjs/components/prism-scala';
+import 'prismjs/components/prism-dart';
+import 'prismjs/components/prism-lua';
+import 'prismjs/components/prism-perl';
+import 'prismjs/components/prism-r';
+import 'prismjs/components/prism-haskell';
+import 'prismjs/components/prism-clojure';
 
 export interface ChatMessage {
   id: string;
@@ -377,28 +388,41 @@ export class MainChatComponent implements AfterViewChecked {
       let highlightedCount = 0;
 
       unprocessedCodeBlocks.forEach((block) => {
-        // Check if it already has a language class
-        const hasLanguageClass = block.className.includes('language-');
+        // Check what language class marked.js already set
+        const currentClass = block.className;
+        console.log('🔍 Processing code block with class:', currentClass);
 
-        if (!hasLanguageClass) {
-          // Try to detect language from content
+        // Only try to detect language if marked.js didn't set one
+        if (!currentClass || currentClass === '' || currentClass === 'language-') {
+          console.log('🔧 No language detected by marked.js, trying manual detection...');
           const codeContent = block.textContent || '';
           const detectedLang = this.detectCodeLanguage(codeContent);
 
           if (detectedLang && Prism.languages[detectedLang]) {
             block.className = `language-${detectedLang}`;
+            console.log(`✅ Manually detected: ${detectedLang}`);
           } else {
             block.className = 'language-none';
+            console.log('❓ No language could be detected');
           }
+        } else {
+          console.log(`✅ Using language from marked.js: ${currentClass}`);
         }
 
-        // Apply Prism highlighting
+        // Apply Prism highlighting if we have a valid language
         if (block.className.includes('language-') && !block.className.includes('language-none')) {
-          try {
-            Prism.highlightElement(block as HTMLElement);
-            highlightedCount++;
-          } catch (err) {
-            console.warn(`Failed to highlight code block:`, err);
+          const lang = block.className.replace('language-', '');
+
+          if (Prism.languages[lang]) {
+            try {
+              Prism.highlightElement(block as HTMLElement);
+              highlightedCount++;
+              console.log(`🎨 Successfully highlighted ${lang} code block`);
+            } catch (err) {
+              console.warn(`❌ Failed to highlight ${lang} code block:`, err);
+            }
+          } else {
+            console.warn(`⚠️ Language '${lang}' not supported by Prism.js`);
           }
         }
 
