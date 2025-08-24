@@ -5,6 +5,23 @@ import { HivemindService, MasterEvaluation, ModelResponse } from '../../services
 import { marked } from 'marked';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Agent } from '../agent-creator/agent-creator';
+import * as Prism from 'prismjs';
+
+// Import common language syntax highlighters
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-csharp';
+import 'prismjs/components/prism-php';
+import 'prismjs/components/prism-ruby';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/components/prism-markdown';
 
 export interface ChatMessage {
   id: string;
@@ -73,16 +90,7 @@ export class MainChatComponent implements AfterViewChecked {
 
         // Process the response for the middle chat panel (with nested markdown handling)
         const rawResponse = this.formatResponse(response.results, response.masterEvaluation);
-        console.log('🔵 DEBUG: Raw HTML contains worker-container class:', rawResponse.includes('class="worker-container'));
-        console.log('🔵 DEBUG: Raw HTML contains blue border:', rawResponse.includes('border: 2px solid blue'));
         const processedResponse = this.processMiddleChatContent(rawResponse);
-        console.log('🔵 DEBUG: Processed HTML contains worker-container class:', processedResponse.includes('class="worker-container'));
-
-        // Log a sample of the HTML to verify structure
-        const workerContainerMatch = processedResponse.match(/<div class="worker-container[^>]*>/);
-        if (workerContainerMatch) {
-          console.log('🔵 DEBUG: Found worker-container element:', workerContainerMatch[0]);
-        }
 
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
@@ -94,6 +102,12 @@ export class MainChatComponent implements AfterViewChecked {
         };
 
         this.messages.push(assistantMessage);
+
+        // Apply syntax highlighting after DOM update
+        setTimeout(() => {
+          this.applySyntaxHighlighting();
+        }, 0);
+
         this.messageProcessed.emit({ query, results: response.results });
       },
       error: (error) => {
@@ -268,9 +282,22 @@ export class MainChatComponent implements AfterViewChecked {
       // Process any markdown content (both regular and nested)
       const processedMarkdown = this.processNestedMarkdown(rawContent);
 
+      // Configure marked with better options for professional rendering
+      const markedOptions = {
+        async: false,
+        gfm: true, // GitHub Flavored Markdown
+        breaks: true, // Line breaks become <br>
+        sanitize: false, // We'll sanitize with DomSanitizer
+        smartLists: true,
+        smartypants: true, // Smart quotes and dashes
+        headerIds: false, // Don't add IDs to headers
+        mangle: false // Don't mangle email addresses
+        // Note: No highlight function - we'll apply Prism.js after DOM insertion
+      };
+
       const newMarkdownHtml = typeof marked.parse === 'function'
-        ? marked.parse(processedMarkdown, { async: false }) as string
-        : marked(processedMarkdown) as string;
+        ? marked.parse(processedMarkdown, markedOptions) as string
+        : marked(processedMarkdown, markedOptions) as string;
 
       const newDiv = `<div class="worker-response-content markdown-content">${newMarkdownHtml}</div>`;
       processedHtml = processedHtml.replace(originalDiv, newDiv);
@@ -322,6 +349,66 @@ export class MainChatComponent implements AfterViewChecked {
   // Clean Qwen thinking tags
   cleanThinkTags(content: string): string {
     return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  }
+
+  // Apply Prism.js syntax highlighting to code blocks
+  applySyntaxHighlighting(): void {
+    try {
+      // Find all code blocks in the chat messages
+      const codeBlocks = document.querySelectorAll('.message-text pre code[class*="language-"]');
+
+      // Apply highlighting to each code block
+      codeBlocks.forEach((block) => {
+        if (!block.classList.contains('highlighted')) {
+          Prism.highlightElement(block as HTMLElement);
+          block.classList.add('highlighted'); // Prevent re-highlighting
+        }
+      });
+
+      // Also highlight any code blocks without specific language classes
+      const genericCodeBlocks = document.querySelectorAll('.message-text pre code:not([class*="language-"])');
+      genericCodeBlocks.forEach((block) => {
+        if (!block.classList.contains('highlighted')) {
+          // Try to detect language from content
+          const codeContent = block.textContent || '';
+          let detectedLang = this.detectCodeLanguage(codeContent);
+
+          if (detectedLang && Prism.languages[detectedLang]) {
+            block.className = `language-${detectedLang}`;
+            Prism.highlightElement(block as HTMLElement);
+            block.classList.add('highlighted');
+          }
+        }
+      });
+    } catch (error) {
+      console.warn('Prism highlighting failed:', error);
+    }
+  }
+
+  // Simple language detection based on code patterns
+  detectCodeLanguage(code: string): string | null {
+    const patterns = [
+      { lang: 'javascript', regex: /\b(const|let|var|function|=>|require\(|console\.log)\b/ },
+      { lang: 'typescript', regex: /\b(interface|type|implements|extends|private|public)\b/ },
+      { lang: 'python', regex: /\b(def|import|from|print\(|if __name__|class)\b/ },
+      { lang: 'java', regex: /\b(public class|private|protected|static|void|System\.out)\b/ },
+      { lang: 'csharp', regex: /\b(using|namespace|public class|private|Console\.WriteLine)\b/ },
+      { lang: 'php', regex: /(<\?php|\$\w+|echo|function\s+\w+\()/ },
+      { lang: 'go', regex: /\b(package|func|import|fmt\.Print|var|:=)\b/ },
+      { lang: 'rust', regex: /\b(fn|let|mut|pub|use|println!)\b/ },
+      { lang: 'sql', regex: /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|CREATE|TABLE)\b/i },
+      { lang: 'bash', regex: /\b(echo|cd|ls|grep|curl|npm|node|git)\b/ },
+      { lang: 'json', regex: /^\s*[\{\[].*[\}\]]\s*$/s },
+      { lang: 'yaml', regex: /^\s*\w+:\s*\w+/m }
+    ];
+
+    for (const pattern of patterns) {
+      if (pattern.regex.test(code)) {
+        return pattern.lang;
+      }
+    }
+
+    return null;
   }
 
   private scrollToBottom() {

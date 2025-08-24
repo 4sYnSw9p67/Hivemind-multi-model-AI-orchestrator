@@ -1,6 +1,9 @@
 /* Global font import - inspired by Cursor docs typography */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* Prism.js syntax highlighting styles */
+@import 'prismjs/themes/prism-tomorrow.css';
+
 /* Tailwind base */
 @import "tailwindcss";
 
