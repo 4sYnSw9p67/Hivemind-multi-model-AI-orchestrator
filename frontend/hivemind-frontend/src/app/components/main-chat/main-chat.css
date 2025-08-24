@@ -870,80 +870,120 @@
   border-color: var(--neutral-700);
 }
 
-/* Individual Worker Container Styles */
-.worker-container {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  margin: var(--space-4) 0;
-  padding: var(--space-4);
-  position: relative;
+/* Worker Info Styles (outside container) */
+.message-text .best-response-marker {
+  color: var(--brand-primary) !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  margin: 8px 0 4px 0 !important;
 }
 
-.worker-container.best-response {
-  border-color: var(--brand-primary);
-  background: rgba(var(--brand-primary-rgb), 0.05);
+.message-text .worker-info {
+  color: var(--text-secondary) !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 8px !important;
+  font-weight: 500 !important;
 }
 
-.worker-header {
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border-light);
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+.message-text .worker-info strong {
+  color: var(--text-primary) !important;
 }
 
-.worker-header strong {
-  color: var(--text-primary);
-  font-size: 1rem;
+.message-text .worker-params {
+  color: var(--text-tertiary) !important;
+  font-family: var(--font-family-mono) !important;
+  font-size: 0.75rem !important;
 }
 
-.worker-response-content {
-  margin: var(--space-3) 0;
-  line-height: 1.6;
+.message-text .processing-time {
+  color: var(--text-tertiary) !important;
+  font-size: 0.75rem !important;
 }
 
-.worker-response-content.markdown-content {
+/* Individual Worker Container Styles - High Specificity */
+.message-text .worker-container {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 8px !important;
+  margin: 8px 0 16px 0 !important;
+  padding: 16px !important;
+  position: relative !important;
+  display: block !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.message-text .worker-container.best-response {
+  border-color: var(--brand-primary) !important;
+  background: rgba(var(--brand-primary-rgb), 0.05) !important;
+}
+
+.message-text .worker-header {
+  margin-bottom: 12px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid var(--neutral-700) !important;
+  font-size: 0.875rem !important;
+  color: var(--neutral-400) !important;
+  display: block !important;
+  font-weight: 500 !important;
+}
+
+.message-text .worker-header strong {
+  color: var(--text-primary) !important;
+  font-size: 1rem !important;
+}
+
+.message-text .worker-response-content {
+  margin: var(--space-3) 0 !important;
+  line-height: 1.6 !important;
+  display: block !important;
+}
+
+.message-text .worker-response-content.markdown-content {
   /* Inherit all the existing markdown styles */
 }
 
-.worker-metadata {
-  margin-top: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-light);
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
+.message-text .worker-metadata {
+  margin-top: 8px !important;
+  font-size: 0.75rem !important;
+  color: var(--text-tertiary) !important;
+  display: block !important;
 }
 
-.worker-error {
-  color: var(--error);
-  background: var(--error-light);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  margin: var(--space-2) 0;
+.message-text .worker-error {
+  color: var(--error) !important;
+  background: var(--error-light) !important;
+  padding: var(--space-2) !important;
+  border-radius: var(--radius-sm) !important;
+  margin: var(--space-2) 0 !important;
+}
+
+.message-text .best-badge {
+  position: absolute !important;
+  top: -6px !important;
+  right: 12px !important;
+  background: var(--brand-primary) !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Dark theme adjustments for worker containers */
-:root[data-theme="dark"] .worker-container {
-  background: var(--neutral-800);
-  border-color: var(--neutral-700);
+:root[data-theme="dark"] .message-text .worker-container {
+  background: var(--neutral-800) !important;
+  border-color: var(--neutral-700) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
 }
 
-:root[data-theme="dark"] .worker-container.best-response {
-  background: rgba(var(--brand-primary-rgb), 0.1);
-  border-color: var(--brand-primary);
+:root[data-theme="dark"] .message-text .worker-container.best-response {
+  background: rgba(var(--brand-primary-rgb), 0.1) !important;
+  border-color: var(--brand-primary) !important;
 }
 
-:root[data-theme="dark"] .worker-header {
-  border-bottom-color: var(--neutral-700);
-}
-
-:root[data-theme="dark"] .worker-metadata {
-  border-top-color: var(--neutral-700);
-}
-
-:root[data-theme="dark"] .worker-error {
-  background: rgba(var(--error-rgb), 0.1);
+:root[data-theme="dark"] .message-text .worker-error {
+  background: rgba(var(--error-rgb), 0.1) !important;
 }
 
 /* Chat message specific markdown containment */

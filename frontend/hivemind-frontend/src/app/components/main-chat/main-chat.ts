@@ -73,7 +73,16 @@ export class MainChatComponent implements AfterViewChecked {
 
         // Process the response for the middle chat panel (with nested markdown handling)
         const rawResponse = this.formatResponse(response.results, response.masterEvaluation);
+        console.log('🔵 DEBUG: Raw HTML contains worker-container class:', rawResponse.includes('class="worker-container'));
+        console.log('🔵 DEBUG: Raw HTML contains blue border:', rawResponse.includes('border: 2px solid blue'));
         const processedResponse = this.processMiddleChatContent(rawResponse);
+        console.log('🔵 DEBUG: Processed HTML contains worker-container class:', processedResponse.includes('class="worker-container'));
+
+        // Log a sample of the HTML to verify structure
+        const workerContainerMatch = processedResponse.match(/<div class="worker-container[^>]*>/);
+        if (workerContainerMatch) {
+          console.log('🔵 DEBUG: Found worker-container element:', workerContainerMatch[0]);
+        }
 
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
@@ -142,15 +151,11 @@ export class MainChatComponent implements AfterViewChecked {
       const isBest = masterEvaluation?.bestResponseIndex === index;
       const ranking = masterEvaluation?.rankings.find(r => r.index === index);
 
-      // Create individual worker container with visual separation
-      html += `<div class="worker-container ${isBest ? 'best-response' : ''}">`;
-
+      // Worker header (OUTSIDE container - part of main evaluation)
       if (isBest) {
-        html += `<div class="best-badge">🏆 Best Response</div>`;
+        html += `<div class="best-response-marker">🏆 Best Response</div>`;
       }
-
-      // Worker header
-      html += `<div class="worker-header">`;
+      html += `<div class="worker-info">`;
       html += `<strong>${result.model}</strong>`;
       if (result.workerParams) {
         html += ` <span class="worker-params">(T:${result.workerParams.temperature.toFixed(2)}, K:${result.workerParams.top_k}, P:${result.workerParams.top_p.toFixed(2)})</span>`;
@@ -167,7 +172,13 @@ export class MainChatComponent implements AfterViewChecked {
         let cleanOutput = result.output || '';
         cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-        // Worker response content container - this will be processed for markdown
+        // Worker response content container - ONLY THE AGENT'S ACTUAL RESPONSE
+        // Apply beautiful styling directly inline to avoid CSS selector issues
+        const containerStyle = isBest
+          ? "background: rgba(34, 197, 94, 0.1) !important; border: 1px solid rgb(34, 197, 94) !important;"
+          : "background: rgb(39, 39, 42) !important; border: 1px solid rgb(63, 63, 70) !important;";
+
+        html += `<div class="worker-container ${isBest ? 'best-response' : ''}" style="${containerStyle} padding: 16px !important; margin: 8px 0 16px 0 !important; border-radius: 8px !important; display: block !important; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;">`;
         html += `<div class="worker-response-content" data-raw-content="${encodeURIComponent(cleanOutput)}">`;
         // Temporary escaped content - will be replaced with rendered markdown
         const escapedOutput = cleanOutput
@@ -178,8 +189,9 @@ export class MainChatComponent implements AfterViewChecked {
           .replace(/'/g, '&#39;');
         html += escapedOutput;
         html += `</div>`;
+        html += `</div>`; // Close worker-container
 
-        // Worker metadata
+        // Worker metadata (OUTSIDE container - part of main evaluation)
         html += `<div class="worker-metadata">`;
         if (result.confidence) {
           html += `<span class="confidence">Confidence: ${(result.confidence * 100).toFixed(1)}%</span>`;
@@ -192,7 +204,6 @@ export class MainChatComponent implements AfterViewChecked {
         }
         html += `</div>`;
       }
-      html += `</div>`; // Close worker-container
     });
 
     // Rankings Summary
@@ -276,14 +287,21 @@ export class MainChatComponent implements AfterViewChecked {
   // Process nested markdown content properly
   processNestedMarkdown(content: string): string {
     let processedContent = content;
+    let foundNested = false;
 
     // Case 1: Extract content from outer ```markdown ... ``` blocks
-    const outerMarkdownPattern = /```markdown\s*([\s\S]*?)\s*```/g;
-    let match;
-    while ((match = outerMarkdownPattern.exec(content)) !== null) {
+    // Use a more precise regex that handles the structure properly
+    const outerMarkdownPattern = /^```markdown\s*\n([\s\S]*?)\n```$/;
+    const match = content.match(outerMarkdownPattern);
+
+    if (match) {
       const innerMarkdown = match[1];
-      // Replace the outer markdown block with just the inner content
-      processedContent = processedContent.replace(match[0], innerMarkdown);
+      processedContent = innerMarkdown;
+      foundNested = true;
+    }
+
+    if (foundNested) {
+      return processedContent.trim();
     }
 
     // Case 2: Handle mixed content (text + markdown block)
@@ -293,6 +311,7 @@ export class MainChatComponent implements AfterViewChecked {
     if (mixedMatch) {
       const [, beforeText, markdownContent, afterText] = mixedMatch;
       processedContent = beforeText.trim() + '\n\n' + markdownContent.trim() + '\n\n' + afterText.trim();
+      return processedContent.trim();
     }
 
     // If no nested markdown patterns were found, return the original content
