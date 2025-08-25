@@ -988,9 +988,9 @@
   display: block !important;
 }
 
-.message-text .worker-response-content.markdown-content {
+/* .message-text .worker-response-content.markdown-content { */
   /* Inherit all the existing markdown styles */
-}
+/* } */
 
 .message-text .worker-metadata {
   margin-top: 8px !important;
